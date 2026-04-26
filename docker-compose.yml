@@ -1,0 +1,51 @@
+services:
+  backend:
+    image: node:20
+    container_name: solicitudes_backend
+    working_dir: /app
+    command: npm run start:dev
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      API_PREFIX: api
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: solicitudes_db
+      POSTGRES_USER: solicitudes_user
+      POSTGRES_PASSWORD: solicitudes_password
+      MONGODB_URI: mongodb://solicitudes_user:solicitudes_password@mongodb:27017/solicitudes_db?authSource=admin
+    volumes:
+      - ./backend:/app
+      - backend_node_modules:/app/node_modules
+    depends_on:
+      - postgres
+      - mongodb
+
+  postgres:
+    image: postgres:16
+    container_name: solicitudes_postgres
+    environment:
+      POSTGRES_DB: solicitudes_db
+      POSTGRES_USER: solicitudes_user
+      POSTGRES_PASSWORD: solicitudes_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  mongodb:
+    image: mongo:7
+    container_name: solicitudes_mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: solicitudes_user
+      MONGO_INITDB_ROOT_PASSWORD: solicitudes_password
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+volumes:
+  backend_node_modules:
+  postgres_data:
+  mongodb_data:
