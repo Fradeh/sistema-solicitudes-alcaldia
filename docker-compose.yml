@@ -1,20 +1,21 @@
 services:
   backend:
-    image: node:20
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: solicitudes_backend
-    working_dir: /app
     command: npm run start:dev
     ports:
       - "3000:3000"
     environment:
       PORT: 3000
-      API_PREFIX: api
+      API_PREFIX: api/v1
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_DB: solicitudes_db
       POSTGRES_USER: solicitudes_user
       POSTGRES_PASSWORD: solicitudes_password
-      MONGODB_URI: mongodb://solicitudes_user:solicitudes_password@mongodb:27017/solicitudes_db?authSource=admin
+      MONGODB_URI: mongodb://solicitudes_user:solicitudes_password@mongodb:27017/solicitudes_academic?authSource=admin
     volumes:
       - ./backend:/app
       - backend_node_modules:/app/node_modules

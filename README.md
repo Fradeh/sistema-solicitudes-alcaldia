@@ -2,7 +2,7 @@
 
 Proyecto base para gestionar solicitudes ciudadanas de una alcaldia.
 
-La aplicacion esta pensada como un sistema fullstack con frontend web, backend API, base de datos relacional y base de datos secundaria para informacion complementaria o documentos.
+La aplicacion esta pensada como un sistema fullstack con frontend web, backend API, base de datos relacional y una base secundaria para el checklist academico.
 
 ## Stack tecnologico
 
@@ -11,14 +11,15 @@ La aplicacion esta pensada como un sistema fullstack con frontend web, backend A
 - Base de datos principal: PostgreSQL
 - Base de datos secundaria: MongoDB
 - Contenedores: Docker y Docker Compose
+- Documentacion API: Swagger
 
 ## Estructura
 
 - `frontend/`: aplicacion web React.
 - `backend/`: API backend NestJS.
-- `backend/src/modules/`: modulos principales del backend.
+- `backend/src/`: modulos principales del backend.
 - `docs/`: documentacion del proyecto.
-- `infra/`: configuracion de infraestructura.
+- `infra/`: configuracion de infraestructura futura, como Nginx o despliegue.
 - `docker-compose.yml`: servicios de backend, PostgreSQL y MongoDB.
 
 ## Como correr el proyecto
@@ -38,11 +39,19 @@ docker compose up
 3. Acceder al backend:
 
 ```text
-http://localhost:3000/api
+http://localhost:3000/api/v1
+```
+
+4. Verificar servicios principales:
+
+```text
+Health:  http://localhost:3000/api/v1/health
+Swagger: http://localhost:3000/api/docs
 ```
 
 ## Notas
 
 - El frontend todavia no esta incluido en Docker Compose.
-- El backend usa variables basicas definidas en `docker-compose.yml`.
-- Este proyecto contiene una estructura inicial y no incluye logica de negocio todavia.
+- El `docker-compose.yml` oficial esta en la raiz del proyecto.
+- El backend tambien puede correrse localmente desde `backend/` con `npm run start:dev`.
+- Esta version contiene la estructura inicial y no incluye logica de negocio todavia.
