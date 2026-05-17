@@ -1,19 +1,37 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from './modules/auth/auth.module';
-import { CategoriasModule } from './modules/categorias/categorias.module';
-import { DepartamentosModule } from './modules/departamentos/departamentos.module';
-import { EstadosModule } from './modules/estados/estados.module';
-import { SolicitudesModule } from './modules/solicitudes/solicitudes.module';
-import { UsersModule } from './modules/users/users.module';
+import { ConfigModule } from '@nestjs/config';
+import { AcademicMongoModule } from './academic-mongo/academic-mongo.module';
+import { AppController } from './app.controller';
+import { AuthModule } from './auth/auth.module';
+import { CategoriesModule } from './categories/categories.module';
+import { DatabaseModule } from './database/database.module';
+import { DepartmentsModule } from './departments/departments.module';
+import { DocumentsModule } from './documents/documents.module';
+import { RequestHistoryModule } from './request-history/request-history.module';
+import { RequestStatusesModule } from './request-statuses/request-statuses.module';
+import { RequestsModule } from './requests/requests.module';
+import { RolesModule } from './roles/roles.module';
+import { TrackingModule } from './tracking/tracking.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    DatabaseModule,
     AuthModule,
+    RolesModule,
     UsersModule,
-    SolicitudesModule,
-    DepartamentosModule,
-    CategoriasModule,
-    EstadosModule,
+    DepartmentsModule,
+    CategoriesModule,
+    RequestStatusesModule,
+    RequestsModule,
+    RequestHistoryModule,
+    DocumentsModule,
+    TrackingModule,
+    AcademicMongoModule,
   ],
+  controllers: [AppController],
 })
 export class AppModule {}
