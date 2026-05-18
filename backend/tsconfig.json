@@ -12,6 +12,10 @@
     "baseUrl": "./",
     "incremental": true,
     "strict": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    
+    // 👇 ESTAS SON LAS DOS LÍNEAS NUEVAS QUE AGREGAMOS PARA LIMPIAR LOS ERRORES
+    "rootDir": "./src",
+    "ignoreDeprecations": "6.0"
   }
 }
