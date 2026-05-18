@@ -7,22 +7,22 @@ export type DocumentUserDocument = DocumentUser & Document;
 export class DocumentUser {
   
   @Prop({ required: true, trim: true })
-  fileName!: string; // <-- Agrega el '!' aquí
+  fileName!: string;
 
   @Prop({ required: true })
-  fileType!: string; // <-- Aquí también
+  fileType!: string; 
 
   @Prop({ required: true })
-  size!: number; // <-- Aquí también
+  size!: number; 
 
   @Prop({ required: true })
-  url!: string; // <-- Aquí también
+  url!: string; 
 
   @Prop({ required: true })
-  requestId!: string; // <-- Aquí también
+  requestId!: string;
 
   @Prop({ required: true })
-  userId!: string; // <-- Aquí también
+  userId!: string;
 }
 
 export const DocumentSchema = SchemaFactory.createForClass(DocumentUser);

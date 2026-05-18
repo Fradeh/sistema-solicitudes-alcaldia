@@ -11,7 +11,7 @@ import { DocumentsModule } from './modules/documents/module';
 @Module({
   imports: [
     //despues serà remplazado por la conexion a bd en un puero cerrado
-    MongooseModule.forRoot('mongodb://localhost:27017/sistema-solicitudes'), 
+    MongooseModule.forRoot('mongodb://solicitudes_user:solicitudes_password@localhost:27017/solicitudes_db?authSource=admin'),
     AuthModule,
     UsersModule,
     SolicitudesModule,
