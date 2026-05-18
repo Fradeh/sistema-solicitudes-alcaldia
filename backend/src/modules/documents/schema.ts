@@ -19,10 +19,10 @@ export class DocumentUser {
   url!: string; // <-- Aquí también
 
   @Prop({ required: true })
-  requestId!: string; // <-- Aquí también
+  requestId!: string; // 
 
   @Prop({ required: true })
-  userId!: string; // <-- Aquí también
+  userId!: string; // 
 }
 
 export const DocumentSchema = SchemaFactory.createForClass(DocumentUser);
