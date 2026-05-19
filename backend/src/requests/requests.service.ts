@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { DocumentUser } from '../documents/schema/document-user.schema'; // esquema de Mongo
+import { DocumentUser } from '../documents/schema/document-user.schema'; 
+import { CreateDocumentDto } from './dto/create-document.dto';// esquema de Mongo
 
 @Injectable()
 export class RequestsService {
@@ -11,10 +12,10 @@ export class RequestsService {
     private readonly documentModel: Model<DocumentUser>,
   ) {}
 
-  /**
-   * Obtiene todos los documentos asociados al expediente de una solicitud específica
-   * @param requestId ID de la solicitud a consultar
-   */
+  async createDocument(createDocumentDto: CreateDocumentDto): Promise<DocumentUser> {
+    const newDocument = new this.documentModel(createDocumentDto);
+    return newDocument.save();
+  }
   async findDocumentsByRequest(requestId: string): Promise<DocumentUser[]> {
     return this.documentModel.find({ requestId: requestId }).exec();
   }
