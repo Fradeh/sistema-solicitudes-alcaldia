@@ -29,6 +29,12 @@ export class DepartmentsController {
     return this.departmentsService.findAll();
   }
 
+  @Get(':id')
+  @ApiOperation({ summary: 'Obtener un departamento por ID' })
+  findOne(@Param('id') id: string): Promise<Department> {
+    return this.departmentsService.findOne(id);
+  }
+
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar un departamento' })
   update(

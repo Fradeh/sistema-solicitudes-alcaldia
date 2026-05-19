@@ -21,6 +21,14 @@ export class DepartmentsService {
     return this.departmentRepository.find();
   }
 
+  async findOne(id: string): Promise<Department> {
+    const department = await this.departmentRepository.findOneBy({ id });
+    if (!department) {
+      throw new NotFoundException(`Department #${id} not found`);
+    }
+    return department;
+  }
+
   async update(
     id: string,
     updateDepartmentDto: UpdateDepartmentDto,
