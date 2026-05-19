@@ -3,7 +3,12 @@ import { Entity,
         Column, 
         CreateDateColumn, 
         UpdateDateColumn,
-        DeleteDateColumn } from 'typeorm'
+        DeleteDateColumn, 
+        ManyToMany,
+        JoinColumn,
+        ManyToOne} from 'typeorm'
+
+import { Department } from '../../departments/entities/department.entity';
 
 @Entity({ name: 'requests' })
 export class Request {
@@ -22,7 +27,11 @@ export class Request {
         name: 'department_id',
     })
     departmentId!: string;
-
+    
+    @ManyToOne(() => Department)
+    @JoinColumn({ name: 'department_id' })
+    department!: Department;
+    
     @Column({
         type: 'uuid',
         name: 'state_id',
