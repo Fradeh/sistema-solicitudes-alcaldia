@@ -1,17 +1,15 @@
-import { Controller, Post, Body, Get, Param, Delete } from '@nestjs/common';
-import { RequestsService } from './requests.service';
+import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { DocumentUser } from '../documents/schema/document-user.schema';
 import { CreateDocumentDto } from './dto/create-document.dto';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { DocumentUser } from '../documents/schema/document-user.schema'; 
+import { CreateInternalObservationDto } from './dto/create-internal-observation.dto';
+import { RequestsService } from './requests.service';
 
 @ApiTags('Requests & Documents')
 @Controller('requests')
 export class RequestsController {
   constructor(private readonly requestsService: RequestsService) {}
 
-  /**
-   * POST /requests/documents
-   */
   @Post('documents')
   @ApiOperation({ summary: 'Registrar la metadata de un documento (MongoDB)' })
   @ApiResponse({ status: 201, description: 'Metadata guardada exitosamente.' })
@@ -19,43 +17,48 @@ export class RequestsController {
     return this.requestsService.createDocument(createDocumentDto);
   }
 
-  /**
-   * GET /requests/:id/documents
-   */
   @Get('documents/detail/:documentId')
-  @ApiOperation({ summary: 'Obtener la metadata de un documento específico junto a su solicitud' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Metadata del documento y datos de la solicitud obtenidos con éxito.' 
+  @ApiOperation({ summary: 'Obtener la metadata de un documento especifico junto a su solicitud' })
+  @ApiResponse({
+    status: 200,
+    description: 'Metadata del documento y datos de la solicitud obtenidos con exito.',
   })
   @ApiResponse({ status: 404, description: 'Documento no encontrado.' })
   async getDocumentDetail(@Param('documentId') documentId: string) {
     const result = await this.requestsService.findDocumentWithRequestDetails(documentId);
-    
+
     if (!result) {
       return { statusCode: 404, message: 'El documento solicitado no existe.' };
     }
-    
+
     return result;
   }
-  /**
-   * DELETE /requests/documents/:documentId
-   */
+
   @Delete('documents/:documentId')
-  @ApiOperation({ summary: 'Desactivar/Eliminar lógicamente un documento del expediente' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'El documento ha sido desactivado exitosamente (eliminación lógica).',
-    type: DocumentUser
+  @ApiOperation({ summary: 'Desactivar/Eliminar logicamente un documento del expediente' })
+  @ApiResponse({
+    status: 200,
+    description: 'El documento ha sido desactivado exitosamente (eliminacion logica).',
+    type: DocumentUser,
   })
   @ApiResponse({ status: 404, description: 'Documento no encontrado.' })
   async removeDocument(@Param('documentId') documentId: string) {
     const deletedDocument = await this.requestsService.removeDocumentLogically(documentId);
-    
+
     if (!deletedDocument) {
       return { statusCode: 404, message: 'El documento que intenta eliminar no existe.' };
     }
-    
+
     return deletedDocument;
+  }
+
+  @Post(':requestId/internal-observations')
+  @ApiOperation({ summary: 'Registrar observaciones internas de una solicitud' })
+  @ApiResponse({ status: 201, description: 'Observacion interna registrada exitosamente.' })
+  async registerInternalObservation(
+    @Param('requestId') requestId: string,
+    @Body() createInternalObservationDto: CreateInternalObservationDto,
+  ) {
+    return this.requestsService.createInternalObservation(requestId, createInternalObservationDto);
   }
 }
