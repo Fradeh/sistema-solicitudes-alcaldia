@@ -14,8 +14,14 @@ export class RequestHistory {
   @Column({ name: 'previous_status_id', type: 'uuid', nullable: true })
   previousStatusId!: string | null;
 
-  @Column({ name: 'new_status_id', type: 'uuid' })
-  newStatusId!: string;
+  @Column({ name: 'new_status_id', type: 'uuid', nullable: true })
+  newStatusId!: string | null;
+
+  @Column({ name: 'previous_assigned_user_id', type: 'uuid', nullable: true })
+  previousAssignedUserId!: string | null;
+
+  @Column({ name: 'new_assigned_user_id', type: 'uuid', nullable: true })
+  newAssignedUserId!: string | null;
 
   @Column({ name: 'observation', type: 'text', nullable: true })
   observation!: string | null;
