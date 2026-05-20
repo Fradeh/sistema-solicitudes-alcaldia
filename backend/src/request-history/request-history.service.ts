@@ -19,6 +19,12 @@ export interface RegisterAssignmentInput {
   observation?: string | null;
 }
 
+export interface RegisterInternalObservationInput {
+  requestId: string;
+  userId: string;
+  observation: string;
+}
+
 @Injectable()
 export class RequestHistoryService {
   constructor(
@@ -61,6 +67,22 @@ export class RequestHistoryService {
       previousAssignedUserId: input.previousAssignedUserId,
       newAssignedUserId: input.newAssignedUserId,
       observation: input.observation ?? null,
+    });
+
+    return this.requestHistoryRepository.save(historyRecord);
+  }
+
+  async registerInternalObservation(
+    input: RegisterInternalObservationInput,
+  ): Promise<RequestHistory> {
+    const historyRecord = this.requestHistoryRepository.create({
+      requestId: input.requestId,
+      userId: input.userId,
+      previousStatusId: null,
+      newStatusId: null,
+      previousAssignedUserId: null,
+      newAssignedUserId: null,
+      observation: input.observation,
     });
 
     return this.requestHistoryRepository.save(historyRecord);
