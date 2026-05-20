@@ -11,6 +11,14 @@ export interface RegisterStatusChangeInput {
   observation?: string | null;
 }
 
+export interface RegisterAssignmentInput {
+  requestId: string;
+  userId: string;
+  previousAssignedUserId: string | null;
+  newAssignedUserId: string;
+  observation?: string | null;
+}
+
 @Injectable()
 export class RequestHistoryService {
   constructor(
@@ -30,6 +38,28 @@ export class RequestHistoryService {
       userId: input.userId,
       previousStatusId: input.previousStatusId,
       newStatusId: input.newStatusId,
+      previousAssignedUserId: null,
+      newAssignedUserId: null,
+      observation: input.observation ?? null,
+    });
+
+    return this.requestHistoryRepository.save(historyRecord);
+  }
+
+  async registerAssignment(
+    input: RegisterAssignmentInput,
+  ): Promise<RequestHistory | null> {
+    if (input.previousAssignedUserId === input.newAssignedUserId) {
+      return null;
+    }
+
+    const historyRecord = this.requestHistoryRepository.create({
+      requestId: input.requestId,
+      userId: input.userId,
+      previousStatusId: null,
+      newStatusId: null,
+      previousAssignedUserId: input.previousAssignedUserId,
+      newAssignedUserId: input.newAssignedUserId,
       observation: input.observation ?? null,
     });
 
