@@ -22,6 +22,9 @@ export class DocumentUser {
 
   @Prop({ required: true })
   userId!: string;
+  
+  @Prop({ required: true, default: true })
+  isActive!: boolean;
 }
 
 export const DocumentUserSchema = SchemaFactory.createForClass(DocumentUser);

@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Param } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Delete } from '@nestjs/common';
 import { RequestsService } from './requests.service';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
@@ -37,5 +37,25 @@ export class RequestsController {
     }
     
     return result;
+  }
+  /**
+   * DELETE /requests/documents/:documentId
+   */
+  @Delete('documents/:documentId')
+  @ApiOperation({ summary: 'Desactivar/Eliminar lógicamente un documento del expediente' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'El documento ha sido desactivado exitosamente (eliminación lógica).',
+    type: DocumentUser
+  })
+  @ApiResponse({ status: 404, description: 'Documento no encontrado.' })
+  async removeDocument(@Param('documentId') documentId: string) {
+    const deletedDocument = await this.requestsService.removeDocumentLogically(documentId);
+    
+    if (!deletedDocument) {
+      return { statusCode: 404, message: 'El documento que intenta eliminar no existe.' };
+    }
+    
+    return deletedDocument;
   }
 }

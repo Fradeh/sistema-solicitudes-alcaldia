@@ -38,5 +38,17 @@ export class RequestsService {
       document,
       request: requestDetails || 'Solicitud no encontrada en el sistema'
     };
+    
   }
+  
+  async removeDocumentLogically(documentId: string): Promise<DocumentUser | null> {
+  // Buscamos el documento y actualizamos su campo isActive a false
+  return this.documentModel
+    .findByIdAndUpdate(
+      documentId, 
+      { isActive: false }, 
+      { new: true } // { new: true } hace que Mongoose devuelva el documento ya modificado
+    )
+    .exec();
+}
 }
