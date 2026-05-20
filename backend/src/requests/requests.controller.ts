@@ -22,15 +22,20 @@ export class RequestsController {
   /**
    * GET /requests/:id/documents
    */
-  @Get(':id/documents')
-  @ApiOperation({ summary: 'Consultar el expediente de documentos de una solicitud específica' })
+  @Get('documents/detail/:documentId')
+  @ApiOperation({ summary: 'Obtener la metadata de un documento específico junto a su solicitud' })
   @ApiResponse({ 
     status: 200, 
-    description: 'Lista de documentos asociados a la solicitud obtenida con éxito.',
-    type: [DocumentUser] // swagger mostrará los campos (fileName, url, etc.) al Frontend
+    description: 'Metadata del documento y datos de la solicitud obtenidos con éxito.' 
   })
-  @ApiResponse({ status: 404, description: 'Solicitud no encontrada.' })
-  async getRequestDocuments(@Param('id') requestId: string) {
-    return this.requestsService.findDocumentsByRequest(requestId);
+  @ApiResponse({ status: 404, description: 'Documento no encontrado.' })
+  async getDocumentDetail(@Param('documentId') documentId: string) {
+    const result = await this.requestsService.findDocumentWithRequestDetails(documentId);
+    
+    if (!result) {
+      return { statusCode: 404, message: 'El documento solicitado no existe.' };
+    }
+    
+    return result;
   }
 }
