@@ -7,8 +7,11 @@ import { Request } from './entities/request.entity';
 import { Department } from 'src/departments/entities/department.entity';
 
 
+
 @Module({
-  imports: [TypeOrmModule.forFeature([Request, Department, ]), DocumentsModule],
+  imports: [ TypeOrmModule.forFeature([Request, Department]), // Importa las entidades para TypeORM
+    DocumentsModule, // conexión a MongoDB integrada
+  ],
   controllers: [RequestsController],
   providers: [RequestsService],
   })
