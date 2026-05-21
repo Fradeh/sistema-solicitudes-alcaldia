@@ -10,7 +10,7 @@ import { DepartmentsModule } from 'src/departments/departments.module';
 import { CategoriesModule } from 'src/categories/categories.module';
 import { RequestStatusesModule } from 'src/request-statuses/request-statuses.module';
 import { UsersModule } from 'src/users/users.module';
-
+import { RequestHistoryModule } from 'src/request-history/request-history.module';
 
 
 @Module({
@@ -20,6 +20,7 @@ import { UsersModule } from 'src/users/users.module';
     CategoriesModule, // conexión al módulo de categorías
     RequestStatusesModule, // conexión al módulo de estados de solicitudes
     UsersModule, // conexión al módulo de usuarios
+    RequestHistoryModule, // conexión al módulo de historial de solicitudes
   ],
   controllers: [RequestsController],
   providers: [RequestsService],
