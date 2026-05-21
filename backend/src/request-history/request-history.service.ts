@@ -87,4 +87,11 @@ export class RequestHistoryService {
 
     return this.requestHistoryRepository.save(historyRecord);
   }
+
+  async findByRequestId(requestId: string): Promise<RequestHistory[]> {
+    return this.requestHistoryRepository.find({
+      where: { requestId },
+      order: { createdAt: 'DESC' },
+    });
+  }
 }
