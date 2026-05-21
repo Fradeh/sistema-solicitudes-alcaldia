@@ -11,6 +11,7 @@ import { Entity,
 import { Department } from '../../departments/entities/department.entity';
 import { Category } from '../../categories/entities/category.entity';
 import { RequestPriority } from '../enums/request-priority.enum';
+import { RequestStatus } from '../../request-statuses/entities/request-status.entity';
 
 @Entity({ name: 'requests' })
 export class Request {
@@ -48,6 +49,11 @@ export class Request {
         name: 'status_id',
     })
     statusId!: string;
+
+    //Relatioship with Status Entity
+    @ManyToOne(() => RequestStatus)
+    @JoinColumn({ name: 'status_id' })
+    status!: RequestStatus;
 
     //Priority Enum
     @Column({
