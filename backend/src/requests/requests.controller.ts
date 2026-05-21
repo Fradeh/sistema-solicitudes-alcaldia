@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { DocumentUser } from '../documents/schema/document-user.schema';
 import { CreateDocumentDto } from './dto/create-document.dto';
@@ -56,9 +56,18 @@ export class RequestsController {
   @ApiOperation({ summary: 'Registrar observaciones internas de una solicitud' })
   @ApiResponse({ status: 201, description: 'Observacion interna registrada exitosamente.' })
   async registerInternalObservation(
-    @Param('requestId') requestId: string,
+    @Param('requestId', new ParseUUIDPipe()) requestId: string,
     @Body() createInternalObservationDto: CreateInternalObservationDto,
   ) {
     return this.requestsService.createInternalObservation(requestId, createInternalObservationDto);
+  }
+
+  @Get(':requestId/history')
+  @ApiOperation({ summary: 'Consultar historial completo de una solicitud' })
+  @ApiResponse({ status: 200, description: 'Historial de la solicitud obtenido exitosamente.' })
+  async getRequestHistory(
+    @Param('requestId', new ParseUUIDPipe()) requestId: string,
+  ) {
+    return this.requestsService.getRequestHistory(requestId);
   }
 }
