@@ -12,6 +12,7 @@ import { Department } from '../../departments/entities/department.entity';
 import { Category } from '../../categories/entities/category.entity';
 import { RequestPriority } from '../enums/request-priority.enum';
 import { RequestStatus } from '../../request-statuses/entities/request-status.entity';
+import { User } from '../../users/entities/user.entity';
 
 @Entity({ name: 'requests' })
 export class Request {
@@ -70,6 +71,11 @@ export class Request {
         nullable: true,
     })
     userAssignedId!: string;
+
+    //Relatioship with User Entity
+    @ManyToOne(() => User)
+    @JoinColumn({ name: 'user_assigned_id' })
+    userAssigned!: User;
 
     //Tracking Code
     @Column({
