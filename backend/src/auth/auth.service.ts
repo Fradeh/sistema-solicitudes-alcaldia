@@ -4,21 +4,27 @@ import { JwtService } from '@nestjs/jwt';
 import type { StringValue } from 'ms';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { LoginDto } from './dto/login.dto';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private jwtService: JwtService,
     private configService: ConfigService,
+    private usersService: UsersService,
   ) {}
 
   async login(dto: LoginDto) {
-    const user = await this.validateUser(dto.email, dto.password);
+    const user = await this.usersService.validateUser(dto.email, dto.password);
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
-      role: user.role,
+      role: user.role.name,
     };
 
     const tokens = await this.generateTokens(payload);
@@ -54,16 +60,6 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
     }
-  }
-
-  async validateUser(email: string, _password: string) {
-    // TODO: Reemplazar con la búsqueda real de usuarios y la validación de contraseña
-    // cuando el UsersModule esté implementado
-    return {
-      id: "1",
-      email,
-      role: "admin",
-    };
   }
 
   private async generateTokens(payload: JwtPayload) {
