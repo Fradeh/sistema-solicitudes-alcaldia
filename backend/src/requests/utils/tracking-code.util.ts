@@ -17,5 +17,3 @@ export function generateTrackingCode(PREFIX = 'TRK'): string {
   return `${PREFIX}-${cleanTimestamp}-${cleanRandom}`;
     
 }
-
-    console.log('Generated Tracking Code:', generateTrackingCode());
