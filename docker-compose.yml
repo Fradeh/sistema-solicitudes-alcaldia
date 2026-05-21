@@ -7,6 +7,8 @@ services:
     command: npm run start:dev
     ports:
       - "3000:3000"
+    env_file:
+      - ./backend/.env
     environment:
       PORT: 3000
       API_PREFIX: api/v1
@@ -16,8 +18,8 @@ services:
       POSTGRES_USER: solicitudes_user
       POSTGRES_PASSWORD: solicitudes_password
       MONGODB_URI: mongodb://solicitudes_user:solicitudes_password@mongodb:27017/solicitudes_academic?authSource=admin
-      JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: 8h
+      JWT_REFRESH_EXPIRES_IN: 7d
     volumes:
       - ./backend:/app
       - backend_node_modules:/app/node_modules
