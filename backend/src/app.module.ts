@@ -18,9 +18,9 @@ import { UsersModule } from './users/users.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: 'env',
+      envFilePath: '.env', // Se le añade el punto para que lea tu archivo '.env'
     }),
-    DatabaseModule,
+    DatabaseModule, //modulo se encargará de levantar ambas bases de datos
     AuthModule,
     RolesModule,
     UsersModule,
