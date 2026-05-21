@@ -9,6 +9,8 @@ import { Entity,
         ManyToOne} from 'typeorm'
 
 import { Department } from '../../departments/entities/department.entity';
+import { Category } from '../../categories/entities/category.entity';
+import { RequestPriority } from '../enums/request-priority.enum';
 
 @Entity({ name: 'requests' })
 export class Request {
@@ -16,34 +18,46 @@ export class Request {
     @PrimaryGeneratedColumn('uuid')
     id!: string;
 
+    //Category Entity
     @Column({
         type: 'uuid',
         name: 'category_id',
     })
     categoryId!: string;
 
+    //Relatioship with Category Entity
+    @ManyToOne(() => Category)
+    @JoinColumn({ name: 'category_id' })
+    category!: Category;
+
+    //Department Entity
     @Column({
         type: 'uuid',
         name: 'department_id',
     })
     departmentId!: string;
-    
+
+    //Relatioship with Department Entity
     @ManyToOne(() => Department)
     @JoinColumn({ name: 'department_id' })
     department!: Department;
     
+    //Status Entity
     @Column({
         type: 'uuid',
-        name: 'state_id',
+        name: 'status_id',
     })
-    stateId!: string;
+    statusId!: string;
 
+    //Priority Enum
     @Column({
-        type: 'varchar',
-        length: 50,
+        type: 'enum',
+        enum: RequestPriority,
+        default: RequestPriority.MEDIUM,
     })
-    priority!: string;
+    priority!: RequestPriority;
 
+    //User Entity
     @Column({
         type: 'uuid',
         name: 'user_assigned_id',
@@ -51,6 +65,7 @@ export class Request {
     })
     userAssignedId!: string;
 
+    //Tracking Code
     @Column({
         type: 'varchar',
         length: 30,
@@ -58,6 +73,12 @@ export class Request {
         name: 'tracking_code',
     })
     trackingCode!: string;
+
+    @Column({
+        type: 'boolean',
+        default: true,
+    })
+    isActive!: boolean;
 
     @CreateDateColumn({
         name: 'created_at',
@@ -68,10 +89,4 @@ export class Request {
         name: 'updated_at',
     })
     updatedAt!: Date;
-
-    @DeleteDateColumn({
-        name: 'deleted_at',
-        nullable: true,
-    })
-    deletedAt?: Date;
 }
