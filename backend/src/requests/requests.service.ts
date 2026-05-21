@@ -56,4 +56,8 @@ export class RequestsService {
       observation: createInternalObservationDto.observation,
     });
   }
+
+  async getRequestHistory(requestId: string) {
+    return this.requestHistoryService.findByRequestId(requestId);
+  }
 }
