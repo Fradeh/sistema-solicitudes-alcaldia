@@ -8,12 +8,12 @@ import {
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 
-@Entity('departments')
-export class Department {
+@Entity('roles')
+export class Role {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ type: 'varchar', length: 150, unique: true })
+  @Column({ type: 'varchar', length: 50, unique: true })
   name!: string;
 
   @Column({ type: 'text', nullable: true })
@@ -22,7 +22,7 @@ export class Department {
   @Column({ type: 'boolean', default: true })
   isActive!: boolean;
 
-  @OneToMany(() => User, (user) => user.department)
+  @OneToMany(() => User, (user) => user.role)
   users!: User[];
 
   @CreateDateColumn({ type: 'timestamp' })
