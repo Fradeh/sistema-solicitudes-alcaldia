@@ -25,10 +25,10 @@ export class ChecklistStep {
 export class AcademicChecklist extends Document {
   
   @Prop({ required: true, index: true })
-  requestId!: string; // 🌟 Corregido con '!'
+  requestId!: string; 
 
   @Prop({ type: [SchemaFactory.createForClass(ChecklistStep)], default: [] })
-  steps!: ChecklistStep[]; // 🌟 Corregido con '!'
+  steps!: ChecklistStep[]; 
 
   @Prop({ required: false })
   generalObservation?: string;

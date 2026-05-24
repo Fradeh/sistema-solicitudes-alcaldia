@@ -1,16 +1,16 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AcademicChecklist, AcademicChecklistSchema } from './schemas/academic-checklist.schema';
+import { AcademicMongoService } from './academic-mongo.service'; // Importación nueva
 
 @Module({
   imports: [
-    // Registramos el esquema para que Mongoose cree la colección en Mongo
     MongooseModule.forFeature([
       { name: AcademicChecklist.name, schema: AcademicChecklistSchema }
     ]),
   ],
-  providers: [],
+  providers: [AcademicMongoService], // Agregado como Provider
   controllers: [],
-  exports: [MongooseModule], // Exportarlo permite que otros módulos lo usen si es necesario
+  exports: [MongooseModule, AcademicMongoService], // Exportado para que otros módulos lo usen
 })
 export class AcademicMongoModule {}
