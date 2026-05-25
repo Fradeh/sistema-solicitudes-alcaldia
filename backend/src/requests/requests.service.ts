@@ -1,10 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { RequestHistoryService } from '../request-history/request-history.service';
 import { DocumentUser } from '../documents/schema/document-user.schema';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { CreateInternalObservationDto } from './dto/create-internal-observation.dto';
+import { CreateRequestDto } from './dto/create-request.dto';
+import { Repository } from 'typeorm';
+import { Request } from './entities/request.entity';
+import { generateTrackingCode } from './utils/tracking-code.util';
+import { InjectRepository } from '@nestjs/typeorm/dist/common/typeorm.decorators';
 
 @Injectable()
 export class RequestsService {
@@ -12,6 +17,8 @@ export class RequestsService {
     @InjectModel(DocumentUser.name)
     private readonly documentModel: Model<DocumentUser>,
     private readonly requestHistoryService: RequestHistoryService,
+      @InjectRepository(Request)
+    private readonly requestRepository: Repository<Request>,
   ) {}
 
   async createDocument(createDocumentDto: CreateDocumentDto): Promise<DocumentUser> {
@@ -59,5 +66,22 @@ export class RequestsService {
 
   async getRequestHistory(requestId: string) {
     return this.requestHistoryService.findByRequestId(requestId);
+  }
+
+  //Function to get all documents for a request
+  async createRequest(createRequestDto: CreateRequestDto ) {
+    
+
+      const trackingCode = generateTrackingCode();
+
+      const request = this.requestRepository.create({
+        ...createRequestDto,
+        trackingCode
+      });
+
+      if(!request) {
+        throw new BadRequestException('No se pudo crear la solicitud');
+      }
+      return await this.requestRepository.save(request);
   }
 }
