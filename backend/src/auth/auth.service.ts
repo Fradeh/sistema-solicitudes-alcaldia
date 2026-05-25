@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import type { StringValue } from 'ms';
@@ -59,6 +59,40 @@ export class AuthService {
       };
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
+    }
+  }
+
+  async getAuthenticatedUser(userId: string) {
+    try {
+      const user = await this.usersService.findOne(userId);
+
+      return {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        isActive: user.isActive,
+        roleId: user.roleId,
+        role: {
+          id: user.role.id,
+          name: user.role.name,
+        },
+        departmentId: user.departmentId,
+        department: user.department
+          ? {
+              id: user.department.id,
+              name: user.department.name,
+            }
+          : undefined,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw new UnauthorizedException('Authenticated user is no longer active');
+      }
+
+      throw error;
     }
   }
 
