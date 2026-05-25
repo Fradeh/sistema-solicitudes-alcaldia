@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
 import { RequestHistoryService } from '../request-history/request-history.service';
@@ -15,6 +15,7 @@ export interface PublicTrackingResponse {
 
 @Injectable()
 export class TrackingService {
+  private static readonly TRACKING_CODE_REGEX = /^[A-Z]{3}-[A-Z0-9]+-[A-Z0-9]+$/;
   private static readonly PUBLIC_REQUEST_PROJECTION: Record<string, 1> = {
     _id: 1,
     id: 1,
@@ -46,6 +47,8 @@ export class TrackingService {
   async getPublicTrackingByCode(
     trackingCode: string,
   ): Promise<PublicTrackingResponse> {
+    const normalizedTrackingCode = this.validateAndNormalizeTrackingCode(trackingCode);
+
     if (!this.connection.db) {
       throw new NotFoundException('No hay conexion activa a la base de datos.');
     }
@@ -53,10 +56,10 @@ export class TrackingService {
     const request = await this.connection.db.collection('requests').findOne(
       {
         $or: [
-          { trackingCode },
-          { tracking_code: trackingCode },
-          { code: trackingCode },
-          { codigoSeguimiento: trackingCode },
+          { trackingCode: normalizedTrackingCode },
+          { tracking_code: normalizedTrackingCode },
+          { code: normalizedTrackingCode },
+          { codigoSeguimiento: normalizedTrackingCode },
         ],
       },
       { projection: TrackingService.PUBLIC_REQUEST_PROJECTION },
@@ -81,7 +84,7 @@ export class TrackingService {
 
     return {
       requestId,
-      trackingCode,
+      trackingCode: normalizedTrackingCode,
       status: this.pickString(request, [
         'statusName',
         'status',
@@ -97,6 +100,24 @@ export class TrackingService {
       lastUpdateAt: lastUpdatedAt,
       subject: this.pickString(request, ['subject', 'title']),
     };
+  }
+
+  private validateAndNormalizeTrackingCode(trackingCode: string): string {
+    const normalizedTrackingCode = trackingCode.trim().toUpperCase();
+
+    if (!normalizedTrackingCode) {
+      throw new BadRequestException(
+        'El codigo de seguimiento es obligatorio.',
+      );
+    }
+
+    if (!TrackingService.TRACKING_CODE_REGEX.test(normalizedTrackingCode)) {
+      throw new BadRequestException(
+        'El codigo de seguimiento no tiene un formato valido.',
+      );
+    }
+
+    return normalizedTrackingCode;
   }
 
   private pickRequestId(source: Record<string, unknown>): string {
