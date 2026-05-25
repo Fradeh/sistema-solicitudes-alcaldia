@@ -13,6 +13,28 @@ export interface PublicTrackingResponse {
 
 @Injectable()
 export class TrackingService {
+  private static readonly PUBLIC_REQUEST_PROJECTION: Record<string, 1> = {
+    _id: 1,
+    id: 1,
+    requestId: 1,
+    trackingCode: 1,
+    tracking_code: 1,
+    code: 1,
+    codigoSeguimiento: 1,
+    statusName: 1,
+    status: 1,
+    currentStatus: 1,
+    estado: 1,
+    submittedAt: 1,
+    createdAt: 1,
+    created_at: 1,
+    lastUpdateAt: 1,
+    updatedAt: 1,
+    updated_at: 1,
+    subject: 1,
+    title: 1,
+  };
+
   constructor(
     @InjectConnection()
     private readonly connection: Connection,
@@ -25,14 +47,17 @@ export class TrackingService {
       throw new NotFoundException('No hay conexion activa a la base de datos.');
     }
 
-    const request = await this.connection.db.collection('requests').findOne({
-      $or: [
-        { trackingCode },
-        { tracking_code: trackingCode },
-        { code: trackingCode },
-        { codigoSeguimiento: trackingCode },
-      ],
-    });
+    const request = await this.connection.db.collection('requests').findOne(
+      {
+        $or: [
+          { trackingCode },
+          { tracking_code: trackingCode },
+          { code: trackingCode },
+          { codigoSeguimiento: trackingCode },
+        ],
+      },
+      { projection: TrackingService.PUBLIC_REQUEST_PROJECTION },
+    );
 
     if (!request) {
       throw new NotFoundException(
@@ -59,7 +84,7 @@ export class TrackingService {
         'updatedAt',
         'updated_at',
       ]),
-      subject: this.pickString(request, ['subject', 'title', 'description']),
+      subject: this.pickString(request, ['subject', 'title']),
     };
   }
 
