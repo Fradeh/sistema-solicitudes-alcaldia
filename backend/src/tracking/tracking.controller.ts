@@ -21,6 +21,10 @@ export class TrackingController {
     description: 'Informacion basica y publica de la solicitud',
   })
   @ApiResponse({
+    status: 400,
+    description: 'El codigo de seguimiento no tiene un formato valido',
+  })
+  @ApiResponse({
     status: 404,
     description: 'No se encontro una solicitud con ese codigo de seguimiento',
   })
