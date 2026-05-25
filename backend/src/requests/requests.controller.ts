@@ -1,23 +1,32 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiTags , ApiBadRequestResponse} from '@nestjs/swagger';
 import { DocumentUser } from '../documents/schema/document-user.schema';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { CreateInternalObservationDto } from './dto/create-internal-observation.dto';
 import { RequestsService } from './requests.service';
+import { CreateRequestDto } from './dto/create-request.dto';
 
 @ApiTags('Requests & Documents')
 @Controller('requests')
 export class RequestsController {
   constructor(private readonly requestsService: RequestsService) {}
 
-  @Post('documents')
+@Post('/register')
+  @ApiOperation({ summary: 'Registrar una nueva solicitud' })
+  @ApiResponse({ status: 201, description: 'Solicitud registrada exitosamente.' })
+  @ApiBadRequestResponse({ status: 400, description: 'Datos de solicitud inválidos.' })
+  async registerRequest(@Body() createRequestDto: CreateRequestDto) {
+    return this.requestsService.createRequest(createRequestDto);
+  }
+
+  @Post('/documents')
   @ApiOperation({ summary: 'Registrar la metadata de un documento (MongoDB)' })
   @ApiResponse({ status: 201, description: 'Metadata guardada exitosamente.' })
   async registerDocument(@Body() createDocumentDto: CreateDocumentDto) {
     return this.requestsService.createDocument(createDocumentDto);
   }
 
-  @Get('documents/detail/:documentId')
+  @Get('/documents/detail/:documentId')
   @ApiOperation({ summary: 'Obtener la metadata de un documento especifico junto a su solicitud' })
   @ApiResponse({
     status: 200,
