@@ -1,12 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
+import { RequestHistoryService } from '../request-history/request-history.service';
 
 export interface PublicTrackingResponse {
   requestId: string;
   trackingCode: string;
   status: string | null;
   submittedAt: Date | string | null;
+  lastUpdatedAt: Date | string | null;
   lastUpdateAt: Date | string | null;
   subject: string | null;
 }
@@ -38,6 +40,7 @@ export class TrackingService {
   constructor(
     @InjectConnection()
     private readonly connection: Connection,
+    private readonly requestHistoryService: RequestHistoryService,
   ) {}
 
   async getPublicTrackingByCode(
@@ -65,8 +68,19 @@ export class TrackingService {
       );
     }
 
+    const requestId = this.pickRequestId(request);
+    const fallbackLastUpdateAt = this.pickValue(request, [
+      'lastUpdateAt',
+      'updatedAt',
+      'updated_at',
+    ]);
+    const lastUpdatedAt = await this.resolveLastUpdatedAt(
+      requestId,
+      fallbackLastUpdateAt,
+    );
+
     return {
-      requestId: this.pickRequestId(request),
+      requestId,
       trackingCode,
       status: this.pickString(request, [
         'statusName',
@@ -79,11 +93,8 @@ export class TrackingService {
         'createdAt',
         'created_at',
       ]),
-      lastUpdateAt: this.pickValue(request, [
-        'lastUpdateAt',
-        'updatedAt',
-        'updated_at',
-      ]),
+      lastUpdatedAt,
+      lastUpdateAt: lastUpdatedAt,
       subject: this.pickString(request, ['subject', 'title']),
     };
   }
@@ -138,5 +149,41 @@ export class TrackingService {
     }
 
     return null;
+  }
+
+  private async resolveLastUpdatedAt(
+    requestId: string,
+    fallbackLastUpdateAt: Date | string | null,
+  ): Promise<Date | string | null> {
+    if (!this.isLikelyUuid(requestId)) {
+      return fallbackLastUpdateAt;
+    }
+
+    const latestHistory =
+      await this.requestHistoryService.findLatestByRequestId(requestId);
+
+    if (!latestHistory?.createdAt) {
+      return fallbackLastUpdateAt;
+    }
+
+    if (!fallbackLastUpdateAt) {
+      return latestHistory.createdAt;
+    }
+
+    const fallbackDate = new Date(fallbackLastUpdateAt);
+
+    if (Number.isNaN(fallbackDate.getTime())) {
+      return latestHistory.createdAt;
+    }
+
+    return latestHistory.createdAt > fallbackDate
+      ? latestHistory.createdAt
+      : fallbackLastUpdateAt;
+  }
+
+  private isLikelyUuid(value: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      value,
+    );
   }
 }

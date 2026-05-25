@@ -94,4 +94,11 @@ export class RequestHistoryService {
       order: { createdAt: 'DESC' },
     });
   }
+
+  async findLatestByRequestId(requestId: string): Promise<RequestHistory | null> {
+    return this.requestHistoryRepository.findOne({
+      where: { requestId },
+      order: { createdAt: 'DESC' },
+    });
+  }
 }
