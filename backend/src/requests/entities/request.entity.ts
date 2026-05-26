@@ -123,6 +123,7 @@ export class Request {
 
     @Column({
         type: 'boolean',
+        name: 'is_active',
         default: true,
     })
     isActive!: boolean;

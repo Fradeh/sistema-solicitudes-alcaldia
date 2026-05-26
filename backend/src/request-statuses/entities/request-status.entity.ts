@@ -17,12 +17,12 @@ export class RequestStatus {
   @Column({ type: 'text', nullable: true })
   description?: string;
 
-  @Column({ type: 'boolean', default: true })
+  @Column({ type: 'boolean', name: 'is_active', default: true })
   isActive!: boolean;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
   createdAt!: Date;
 
-  @UpdateDateColumn({ type: 'timestamp' })
+  @UpdateDateColumn({ type: 'timestamp', name: 'updated_at' })
   updatedAt!: Date;
 }

@@ -16,10 +16,10 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ type: 'varchar', length: 100, name: 'firstName' })
+  @Column({ type: 'varchar', length: 100, name: 'first_name' })
   firstName!: string;
 
-  @Column({ type: 'varchar', length: 100, name: 'lastName' })
+  @Column({ type: 'varchar', length: 100, name: 'last_name' })
   lastName!: string;
 
   @Column({ type: 'varchar', length: 150, unique: true })
@@ -29,26 +29,26 @@ export class User {
   @Exclude()
   password!: string;
 
-  @Column({ type: 'boolean', default: true })
+  @Column({ type: 'boolean', name: 'is_active', default: true })
   isActive!: boolean;
 
-  @Column({ type: 'uuid', name: 'roleId' })
+  @Column({ type: 'uuid', name: 'role_id' })
   roleId!: string;
 
   @ManyToOne(() => Role)
-  @JoinColumn({ name: 'roleId' })
+  @JoinColumn({ name: 'role_id' })
   role!: Role;
 
-  @Column({ type: 'uuid', name: 'departmentId', nullable: true })
+  @Column({ type: 'uuid', name: 'department_id', nullable: true })
   departmentId?: string;
 
   @ManyToOne(() => Department, { nullable: true })
-  @JoinColumn({ name: 'departmentId' })
+  @JoinColumn({ name: 'department_id' })
   department?: Department;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
   createdAt!: Date;
 
-  @UpdateDateColumn({ type: 'timestamp' })
+  @UpdateDateColumn({ type: 'timestamp', name: 'updated_at' })
   updatedAt!: Date;
 }
