@@ -20,19 +20,19 @@ export class Category {
   @Column({ type: 'text', nullable: true })
   description?: string;
 
-  @Column({ type: 'boolean', default: true })
+  @Column({ type: 'boolean', name: 'is_active', default: true })
   isActive!: boolean;
 
-  @Column({ type: 'uuid', name: 'departmentId' })
+  @Column({ type: 'uuid', name: 'department_id' })
   departmentId!: string;
 
   @ManyToOne(() => Department)
-  @JoinColumn({ name: 'departmentId' })
+  @JoinColumn({ name: 'department_id' })
   department!: Department;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
   createdAt!: Date;
 
-  @UpdateDateColumn({ type: 'timestamp' })
+  @UpdateDateColumn({ type: 'timestamp', name: 'updated_at' })
   updatedAt!: Date;
 }
