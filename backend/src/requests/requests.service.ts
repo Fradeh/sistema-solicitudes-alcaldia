@@ -68,15 +68,16 @@ export class RequestsService {
     return this.requestHistoryService.findByRequestId(requestId);
   }
 
-  //Function to get all documents for a request
-  async createRequest(createRequestDto: CreateRequestDto ) {
-    
+  // Obtener todos los documentos de una solicitud
+  async createRequest(createRequestDto: CreateRequestDto, receivedById: string) {
+
 
       const trackingCode = generateTrackingCode();
 
       const request = this.requestRepository.create({
         ...createRequestDto,
-        trackingCode
+        trackingCode,
+        receivedById
       });
 
       if(!request) {
