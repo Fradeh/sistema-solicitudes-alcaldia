@@ -9,11 +9,15 @@ import {
 import { RequestStatus } from '../../request-statuses/entities/request-status.entity';
 import { Request } from '../../requests/entities/request.entity';
 import { User } from '../../users/entities/user.entity';
+import { RequestHistoryEventType } from '../enums/request-history-event-type.enum';
 
 @Entity('request_history')
 export class RequestHistory {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
+
+  @Column({ name: 'event_type', type: 'varchar', length: 50 })
+  eventType!: string;
 
   @Column({ name: 'request_id', type: 'uuid' })
   requestId!: string;

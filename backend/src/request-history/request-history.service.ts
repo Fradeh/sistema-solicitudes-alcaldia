@@ -2,6 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { RequestHistory } from './entities/request-history.entity';
+import { RequestHistoryEventType } from './enums/request-history-event-type.enum';
+
+export interface RegisterCreationInput {
+  requestId: string;
+  userId: string;
+}
 
 export interface RegisterStatusChangeInput {
   requestId: string;
@@ -32,6 +38,23 @@ export class RequestHistoryService {
     private readonly requestHistoryRepository: Repository<RequestHistory>,
   ) {}
 
+  async registerCreation(
+    input: RegisterCreationInput,
+  ): Promise<RequestHistory> {
+    const historyRecord = this.requestHistoryRepository.create({
+      eventType: RequestHistoryEventType.REQUEST_CREATED,
+      requestId: input.requestId,
+      userId: input.userId,
+      previousStatusId: null,
+      newStatusId: null,
+      previousAssignedUserId: null,
+      newAssignedUserId: null,
+      observation: null,
+    });
+
+    return this.requestHistoryRepository.save(historyRecord);
+  }
+
   async registerStatusChange(
     input: RegisterStatusChangeInput,
   ): Promise<RequestHistory | null> {
@@ -40,6 +63,7 @@ export class RequestHistoryService {
     }
 
     const historyRecord = this.requestHistoryRepository.create({
+      eventType: RequestHistoryEventType.STATUS_CHANGED,
       requestId: input.requestId,
       userId: input.userId,
       previousStatusId: input.previousStatusId,
@@ -60,6 +84,7 @@ export class RequestHistoryService {
     }
 
     const historyRecord = this.requestHistoryRepository.create({
+      eventType: RequestHistoryEventType.ASSIGNED,
       requestId: input.requestId,
       userId: input.userId,
       previousStatusId: null,
@@ -76,6 +101,7 @@ export class RequestHistoryService {
     input: RegisterInternalObservationInput,
   ): Promise<RequestHistory> {
     const historyRecord = this.requestHistoryRepository.create({
+      eventType: RequestHistoryEventType.INTERNAL_OBSERVATION,
       requestId: input.requestId,
       userId: input.userId,
       previousStatusId: null,
