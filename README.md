@@ -36,6 +36,9 @@ para un checklist documental del alcalde en una fase posterior.
 Consulta la decision completa en
 [`docs/architecture.md`](docs/architecture.md).
 
+El alcance tecnico del sprint backend esta definido en
+[`docs/sprint-scope.md`](docs/sprint-scope.md).
+
 ## Como correr el proyecto
 
 1. Entrar a la carpeta del proyecto:
@@ -70,3 +73,5 @@ Swagger: http://localhost:3000/api/docs
 - El backend tambien puede correrse localmente desde `backend/` con `npm run start:dev`.
 - La arquitectura oficial de persistencia esta documentada en
   `docs/architecture.md` y debe respetarse en nuevas implementaciones.
+- El alcance tecnico vigente del sprint backend esta documentado en
+  `docs/sprint-scope.md`.
