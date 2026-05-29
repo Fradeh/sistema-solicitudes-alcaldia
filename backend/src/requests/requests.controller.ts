@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiBadRequestResponse, ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { DocumentUser } from '../documents/schema/document-user.schema';
@@ -18,8 +18,11 @@ export class RequestsController {
   @ApiOperation({ summary: 'Registrar una nueva solicitud' })
   @ApiResponse({ status: 201, description: 'Solicitud registrada exitosamente.' })
   @ApiBadRequestResponse({ status: 400, description: 'Datos de solicitud inválidos.' })
-  async registerRequest(@Body() createRequestDto: CreateRequestDto) {
-    return this.requestsService.createRequest(createRequestDto);
+  async registerRequest(
+    @Body() createRequestDto: CreateRequestDto,
+    @Req() request: { user: { userId: string } },
+  ) {
+    return this.requestsService.createRequest(createRequestDto, request.user.userId);
   }
 
   @Post('/documents')
