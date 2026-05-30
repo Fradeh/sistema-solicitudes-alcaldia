@@ -1,11 +1,12 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Req, UseGuards } from '@nestjs/common';
-import { ApiBadRequestResponse, ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBadRequestResponse, ApiBearerAuth, ApiNotFoundResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { DocumentUser } from '../documents/schema/document-user.schema';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { CreateInternalObservationDto } from './dto/create-internal-observation.dto';
 import { RequestsService } from './requests.service';
 import { CreateRequestDto } from './dto/create-request.dto';
+import { RequestHistoryResponseDto } from '../request-history/dto/request-history-response.dto';
 
 @ApiTags('Requests & Documents')
 @ApiBearerAuth()
@@ -79,10 +80,11 @@ export class RequestsController {
 
   @Get(':requestId/history')
   @ApiOperation({ summary: 'Consultar historial completo de una solicitud' })
-  @ApiResponse({ status: 200, description: 'Historial de la solicitud obtenido exitosamente.' })
+  @ApiResponse({ status: 200, description: 'Historial de la solicitud.', type: [RequestHistoryResponseDto] })
+  @ApiNotFoundResponse({ description: 'Solicitud no encontrada.' })
   async getRequestHistory(
     @Param('requestId', new ParseUUIDPipe()) requestId: string,
-  ) {
+  ): Promise<RequestHistoryResponseDto[]> {
     return this.requestsService.getRequestHistory(requestId);
   }
 }
