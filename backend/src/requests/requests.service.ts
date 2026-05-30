@@ -10,6 +10,7 @@ import { Repository } from 'typeorm';
 import { Request } from './entities/request.entity';
 import { generateTrackingCode } from './utils/tracking-code.util';
 import { InjectRepository } from '@nestjs/typeorm/dist/common/typeorm.decorators';
+import { ListRequestDto } from './dto/RequestListResponse';
 
 @Injectable()
 export class RequestsService {
@@ -84,4 +85,23 @@ export class RequestsService {
       }
       return await this.requestRepository.save(request);
   }
+
+  async getAllRequests(): Promise<ListRequestDto[]> {
+
+    const requests = await this.requestRepository.find({
+      relations: ['category', 'department', 'status', 'userAssigned'],
+    });
+    
+    return requests.map(request => ({
+      category: request.category.name,
+      department: request.department.name,
+      status: request.status.name,
+      priority: request.priority,
+      trackingCode: request.trackingCode,
+      userAssigned: request.userAssigned ? 
+      `${request.userAssigned.firstName} ${request.userAssigned.lastName}`
+      : undefined
+    }));
+  }
 }
+
