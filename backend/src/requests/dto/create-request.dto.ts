@@ -3,26 +3,50 @@ import { RequestPriority } from 'src/requests/enums/request-priority.enum'
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateRequestDto {
-    
-    //UUID of the category the request belongs to
+
+    // Sujeto de la solicutud
+    @ApiProperty()
+    @IsString()
+    @IsNotEmpty()
+    subject!: string;
+
+    // Descripcion de la solicistud
+    @ApiProperty()
+    @IsString()
+    @IsNotEmpty()
+    description!: string;
+
+    // Nombre del solicitante
+    @ApiProperty()
+    @IsString()
+    @IsNotEmpty()
+    applicantName!: string;
+
+    // Contacto del solicitante
+    @ApiProperty()
+    @IsString()
+    @IsNotEmpty()
+    applicantContact!: string;
+
+    // UUID de la categoría a la que pertenece la solicitud
     @ApiProperty()
     @IsUUID()
     @IsNotEmpty()
     categoryId!: string;
 
-    //UUID of the department the request belongs to
+    // UUID del departamento al que pertenece la solicitud
     @ApiProperty()
     @IsUUID()
     @IsNotEmpty()
     departmentId!: string;
 
-    //UUID of the status the request belongs to
+    // UUID del estado al que pertenece la solicitud
     @ApiProperty()
     @IsUUID()
     @IsNotEmpty()
     statusId!: string;
 
-    //Priority of the request
+    // Prioridad de la solicitud
     @ApiProperty()
     @IsEnum(RequestPriority,{
         message: `Priority must be one of the following values: ${Object.values(RequestPriority).join(', ')}`
@@ -30,16 +54,10 @@ export class CreateRequestDto {
     @IsNotEmpty()
     priority!: RequestPriority;
 
-    //UUID of the user who assigned the request
+    // UUID del usuario asignado a la solicitud
     @ApiProperty()
     @IsUUID()
     @IsNotEmpty()
     userAssignedId!: string;
-
-    //Tracking number of the request
-    @ApiProperty()
-    @IsString()
-    @IsNotEmpty()
-    trackingNumber!: string;
 
 }
