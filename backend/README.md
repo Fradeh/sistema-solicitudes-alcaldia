@@ -59,11 +59,14 @@ Servicios disponibles:
 Desde la carpeta `backend/`:
 
 ```bash
-npm install
+npm ci
+npm run build
 npm run start:dev
 ```
 
 Para correr localmente necesitas tener PostgreSQL y MongoDB disponibles con las variables definidas en `.env.example`.
+
+`npm ci` deja el entorno reproducible usando `package-lock.json`, y `npm run build` confirma que la compilacion pasa antes de levantar el servidor en modo desarrollo.
 
 ## Reglas de persistencia
 
