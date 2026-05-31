@@ -68,6 +68,13 @@ Para correr localmente necesitas tener PostgreSQL y MongoDB disponibles con las 
 
 `npm ci` deja el entorno reproducible usando `package-lock.json`, y `npm run build` confirma que la compilacion pasa antes de levantar el servidor en modo desarrollo.
 
+## Autenticacion y acceso
+
+- Los endpoints internos del backend usan `JwtAuthGuard`.
+- El modulo `requests` queda protegido por JWT para operaciones internas.
+- En observaciones internas, el autor siempre se toma del JWT autenticado; el body no debe enviar `userId`.
+- El endpoint publico de tracking `GET /api/v1/tracking/:trackingCode` permanece sin autenticacion.
+
 ## Reglas de persistencia
 
 ### PostgreSQL: fuente de verdad
