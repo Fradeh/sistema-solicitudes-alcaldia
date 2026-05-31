@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { RequestHistoryService } from '../request-history/request-history.service';
+import { RequestHistoryResponseDto } from '../request-history/dto/request-history-response.dto';
 import { DocumentUser } from '../documents/schema/document-user.schema';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { CreateInternalObservationDto } from './dto/create-internal-observation.dto';
@@ -64,8 +65,22 @@ export class RequestsService {
     });
   }
 
-  async getRequestHistory(requestId: string) {
-    return this.requestHistoryService.findByRequestId(requestId);
+  async getRequestHistory(requestId: string): Promise<RequestHistoryResponseDto[]> {
+    const request = await this.requestRepository.findOne({ where: { id: requestId } });
+
+    if (!request) {
+      throw new NotFoundException(`Solicitud #${requestId} no encontrada`);
+    }
+
+    const history = await this.requestHistoryService.findByRequestId(requestId);
+
+    return history.map((entry) => ({
+      id: entry.id,
+      eventType: entry.eventType,
+      observation: entry.observation,
+      userId: entry.userId,
+      createdAt: entry.createdAt,
+    }));
   }
 
   // Obtener todos los documentos de una solicitud
