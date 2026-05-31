@@ -56,11 +56,12 @@ export class RequestsService {
 
   async createInternalObservation(
     requestId: string,
+    userId: string,
     createInternalObservationDto: CreateInternalObservationDto,
   ) {
     return this.requestHistoryService.registerInternalObservation({
       requestId,
-      userId: createInternalObservationDto.userId,
+      userId,
       observation: createInternalObservationDto.observation,
     });
   }
