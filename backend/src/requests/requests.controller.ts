@@ -26,6 +26,14 @@ export class RequestsController {
     return this.requestsService.createRequest(createRequestDto, request.user.userId);
   }
 
+  @Get('/list')
+  @ApiOperation({ summary: 'Obtener la lista de todas las solicitudes' })
+  @ApiResponse({ status: 200, description: 'Lista de solicitudes obtenida exitosamente.' , isArray: true})
+  @ApiBadRequestResponse({ status: 400, description: 'Error al obtener la lista de solicitudes.' })
+  async getAllRequests() {
+    return this.requestsService.getAllRequests();
+  }
+
   @Post('/documents')
   @ApiOperation({ summary: 'Registrar la metadata de un documento (MongoDB)' })
   @ApiResponse({ status: 201, description: 'Metadata guardada exitosamente.' })
