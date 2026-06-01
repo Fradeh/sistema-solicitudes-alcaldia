@@ -1,14 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import { IsString, MaxLength, MinLength } from 'class-validator';
 
 export class CreateInternalObservationDto {
-  @ApiProperty({
-    description: 'Identificador del usuario que registra la observacion interna',
-    format: 'uuid',
-  })
-  @IsUUID()
-  userId!: string;
-
   @ApiProperty({
     description: 'Comentario interno relacionado con la solicitud',
     minLength: 3,
