@@ -7,6 +7,7 @@ import { CreateInternalObservationDto } from './dto/create-internal-observation.
 import { RequestsService } from './requests.service';
 import { CreateRequestDto } from './dto/create-request.dto';
 import { RequestHistoryResponseDto } from '../request-history/dto/request-history-response.dto';
+import { RequestDetailsDTO } from './dto/RequestDetailsResponseDTO';
 
 @ApiTags('Requests & Documents')
 @ApiBearerAuth()
@@ -15,6 +16,7 @@ import { RequestHistoryResponseDto } from '../request-history/dto/request-histor
 export class RequestsController {
   constructor(private readonly requestsService: RequestsService) {}
 
+  // Registrar una nueva solicitud
 @Post('/register')
   @ApiOperation({ summary: 'Registrar una nueva solicitud' })
   @ApiResponse({ status: 201, description: 'Solicitud registrada exitosamente.' })
@@ -25,13 +27,22 @@ export class RequestsController {
   ) {
     return this.requestsService.createRequest(createRequestDto, request.user.userId);
   }
-
+  // Obtener la lista de todas las solicitudes
   @Get('/list')
   @ApiOperation({ summary: 'Obtener la lista de todas las solicitudes' })
   @ApiResponse({ status: 200, description: 'Lista de solicitudes obtenida exitosamente.' , isArray: true})
   @ApiBadRequestResponse({ status: 400, description: 'Error al obtener la lista de solicitudes.' })
   async getAllRequests() {
     return this.requestsService.getAllRequests();
+  }
+
+  // Obtener los detalles de una solicitud por su ID
+  @Get('/:requestId')
+  @ApiOperation({ summary: 'Obtener los detalles de una solicitud por su ID' })
+  @ApiResponse({ status: 200, description: 'Detalles de la solicitud obtenidos exitosamente.' })
+  @ApiNotFoundResponse({ status: 404, description: 'Solicitud no encontrada.' })
+  async getRequestById(@Param('requestId', new ParseUUIDPipe()) requestId: string) : Promise<RequestDetailsDTO> {
+    return this.requestsService.getRequestById(requestId);
   }
 
   @Post('/documents')
