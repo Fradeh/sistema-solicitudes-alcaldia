@@ -5,13 +5,11 @@ import { Request } from '../requests/entities/request.entity';
 import { RequestHistoryService } from '../request-history/request-history.service';
 
 export interface PublicTrackingResponse {
-  requestId: string;
   trackingCode: string;
+  subject: string | null;
   status: string | null;
   submittedAt: Date | string | null;
-  lastUpdatedAt: Date | string | null;
   lastUpdateAt: Date | string | null;
-  subject: string | null;
 }
 
 @Injectable()
@@ -40,19 +38,17 @@ export class TrackingService {
       );
     }
 
-    const lastUpdatedAt = await this.resolveLastUpdatedAt(
+    const lastUpdateAt = await this.resolveLastUpdatedAt(
       request.id,
       request.updatedAt,
     );
 
     return {
-      requestId: request.id,
       trackingCode: normalizedTrackingCode,
+      subject: request.subject,
       status: request.status?.name ?? null,
       submittedAt: request.createdAt,
-      lastUpdatedAt,
-      lastUpdateAt: lastUpdatedAt,
-      subject: request.subject,
+      lastUpdateAt,
     };
   }
 
