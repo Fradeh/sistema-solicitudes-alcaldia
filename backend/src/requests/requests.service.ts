@@ -12,6 +12,7 @@ import { Request } from './entities/request.entity';
 import { generateTrackingCode } from './utils/tracking-code.util';
 import { InjectRepository } from '@nestjs/typeorm/dist/common/typeorm.decorators';
 import { ListRequestDto } from './dto/RequestListResponse';
+import { RequestDetailsDTO } from './dto/RequestDetailsResponseDTO';
 
 @Injectable()
 export class RequestsService {
@@ -118,6 +119,30 @@ export class RequestsService {
       `${request.userAssigned.firstName} ${request.userAssigned.lastName}`
       : undefined
     }));
+  }
+// Obtener los detalles de una solicitud por su ID
+  async getRequestById(requestId: string) : Promise<RequestDetailsDTO>{
+    const request = await this.requestRepository.findOne({
+      where: { id: requestId },
+      relations: ['category', 'department', 'status', 'userAssigned'],
+    });
+    if (!request) {
+      throw new NotFoundException(`Solicitud #${requestId} no encontrada`);
+    }
+    return {
+      idRequest: request.id,
+      categoryName: request.category.name,
+      departmentName: request.department.name,
+      statusName: request.status.name,
+      priority: request.priority,
+      trackingCode: request.trackingCode,
+      userAssignedName: request.userAssigned ?
+      `${request.userAssigned.firstName} ${request.userAssigned.lastName}`
+      : undefined,
+      creationDate: request.createdAt,
+      updateDate: request.updatedAt
+    };
+
   }
 }
 
