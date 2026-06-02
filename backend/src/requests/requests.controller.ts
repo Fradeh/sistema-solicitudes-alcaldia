@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBadRequestResponse, ApiBearerAuth, ApiNotFoundResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { DocumentUser } from '../documents/schema/document-user.schema';
@@ -8,6 +8,8 @@ import { RequestsService } from './requests.service';
 import { CreateRequestDto } from './dto/create-request.dto';
 import { RequestHistoryResponseDto } from '../request-history/dto/request-history-response.dto';
 import { RequestDetailsDTO } from './dto/RequestDetailsResponseDTO';
+import { FilterRequestDTO } from './dto/FilterRequestDTO';
+import { ListRequestDto } from './dto/RequestListResponse';
 
 @ApiTags('Requests & Documents')
 @ApiBearerAuth()
@@ -32,8 +34,8 @@ export class RequestsController {
   @ApiOperation({ summary: 'Obtener la lista de todas las solicitudes' })
   @ApiResponse({ status: 200, description: 'Lista de solicitudes obtenida exitosamente.' , isArray: true})
   @ApiBadRequestResponse({ status: 400, description: 'Error al obtener la lista de solicitudes.' })
-  async getAllRequests() {
-    return this.requestsService.getAllRequests();
+  async getAllRequests(@Query() filters: FilterRequestDTO,) : Promise<ListRequestDto[]> {
+    return this.requestsService.getAllRequests(filters);
   }
 
   // Obtener los detalles de una solicitud por su ID
