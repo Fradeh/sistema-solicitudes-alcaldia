@@ -1,0 +1,140 @@
+{
+  "auth": {
+    "loginSuccess": {
+      "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwYzI0ZWEyMS1jMzBkLTQ2ZmMtOGIwNS1hNzVjZDIyM2RhNjQiLCJlbWFpbCI6InJlY2VwY2lvbmlzdGFAZGVtby5sb2NhbCIsInJvbGUiOiJSRUNFUFRJT05JU1QifQ",
+      "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwYzI0ZWEyMS1jMzBkLTQ2ZmMtOGIwNS1hNzVjZDIyM2RhNjQifQ",
+      "tokenType": "Bearer",
+      "expiresIn": 28800,
+      "user": {
+        "id": "0c24ea21-c30d-46fc-8b05-a75cd223da64",
+        "name": "Recepcionista Demo",
+        "email": "recepcionista@demo.local",
+        "role": "RECEPTIONIST"
+      }
+    },
+    "loginUnauthorized": {
+      "statusCode": 401,
+      "message": "Credenciales invalidas",
+      "error": "Unauthorized"
+    }
+  },
+  "requests": {
+    "createSuccess": {
+      "id": "3c34dd8d-13fb-4ecf-bf61-e8336f511ef7",
+      "trackingCode": "TRK-DEMO-001",
+      "subject": "Solicitud de reparacion vial",
+      "description": "Se solicita bacheo urgente en la calle principal debido a multiples daños.",
+      "status": "received",
+      "priority": "medium",
+      "categoryId": "cat-001",
+      "departmentId": "dep-002",
+      "createdAt": "2026-05-31T15:00:00.000Z"
+    },
+    "listSuccess": [
+      {
+        "id": "3c34dd8d-13fb-4ecf-bf61-e8336f511ef7",
+        "trackingCode": "TRK-DEMO-001",
+        "subject": "Solicitud de reparacion vial",
+        "applicantName": "Ana Perez",
+        "priority": "medium",
+        "status": "received",
+        "assignedUser": null,
+        "createdAt": "2026-05-31T15:00:00.000Z"
+      }
+    ],
+    "detailSuccess": {
+      "id": "3c34dd8d-13fb-4ecf-bf61-e8336f511ef7",
+      "trackingCode": "TRK-DEMO-001",
+      "subject": "Solicitud de reparacion vial",
+      "description": "Se solicita bacheo urgente en la calle principal debido a multiples daños.",
+      "applicantName": "Ana Perez",
+      "applicantEmail": "ana.perez@example.com",
+      "priority": "medium",
+      "status": "received",
+      "category": {
+        "id": "cat-001",
+        "name": "Mantenimiento de Vias"
+      },
+      "department": {
+        "id": "dep-002",
+        "name": "Obras Publicas"
+      },
+      "assignedUser": {
+        "id": "fa12bc34-a12b-34cd-56ef-7890abcdef12",
+        "name": "Ing. Carlos Mendoza",
+        "role": "OPERATOR"
+      },
+      "createdAt": "2026-05-31T15:00:00.000Z",
+      "updatedAt": "2026-05-31T16:30:00.000Z"
+    },
+    "assignSuccess": {
+      "id": "3c34dd8d-13fb-4ecf-bf61-e8336f511ef7",
+      "trackingCode": "TRK-DEMO-001",
+      "status": "assigned",
+      "assignedUser": {
+        "id": "fa12bc34-a12b-34cd-56ef-7890abcdef12",
+        "name": "Ing. Carlos Mendoza",
+        "role": "OPERATOR"
+      },
+      "assignedAt": "2026-05-31T16:30:00.000Z"
+    },
+    "historySuccess": [
+      {
+        "id": "hist-001",
+        "requestId": "3c34dd8d-13fb-4ecf-bf61-e8336f511ef7",
+        "previousStatus": "received",
+        "newStatus": "assigned",
+        "changedBy": {
+          "id": "0c24ea21-c30d-46fc-8b05-a75cd223da64",
+          "name": "Recepcionista Demo"
+        },
+        "observations": "Se asigna al departamento de ingenieria vial para inspeccion.",
+        "createdAt": "2026-05-31T16:30:00.000Z"
+      }
+    ]
+  },
+  "tracking": {
+    "publicSuccess": {
+      "trackingCode": "TRK-DEMO-001",
+      "subject": "Solicitud de reparacion vial",
+      "status": "received",
+      "submittedAt": "2026-05-31T15:00:00.000Z",
+      "lastUpdateAt": "2026-05-31T15:00:00.000Z"
+    },
+    "notFound": {
+      "statusCode": 404,
+      "message": "No se encontro una solicitud con ese codigo de seguimiento",
+      "error": "Not Found"
+    }
+  },
+  "categories": {
+    "listSuccess": [
+      {
+        "id": "cat-001",
+        "name": "Mantenimiento de Vias",
+        "description": "Reportes asociados a calles, aceras y bacheo",
+        "isActive": true
+      },
+      {
+        "id": "cat-002",
+        "name": "Luminarias y Electricidad",
+        "description": "Fallas en el alumbrado publico",
+        "isActive": true
+      }
+    ]
+  },
+  "departments": {
+    "listSuccess": [
+      {
+        "id": "dep-001",
+        "name": "Atencion Ciudadana",
+        "code": "ATC-01"
+      },
+      {
+        "id": "dep-002",
+        "name": "Obras Publicas",
+        "code": "OBP-02"
+      }
+    ]
+  }
+}
