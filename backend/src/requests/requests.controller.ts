@@ -95,8 +95,13 @@ export class RequestsController {
   async registerInternalObservation(
     @Param('requestId', new ParseUUIDPipe()) requestId: string,
     @Body() createInternalObservationDto: CreateInternalObservationDto,
+    @Req() request: { user: { userId: string } },
   ) {
-    return this.requestsService.createInternalObservation(requestId, createInternalObservationDto);
+    return this.requestsService.createInternalObservation(
+      requestId,
+      request.user.userId,
+      createInternalObservationDto,
+    );
   }
 
   @Get(':requestId/history')
