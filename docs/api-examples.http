@@ -19,7 +19,7 @@ Content-Type: application/json
 }
 
 ### -----------------------------------------------------------------
-### MÓDULO DE SOLICITUDES (Requieren Autenticación)
+### MÓDULO DE SOLICITUDES (Requieren Autenticacion)
 ### -----------------------------------------------------------------
 
 ### Crear una nueva solicitud
