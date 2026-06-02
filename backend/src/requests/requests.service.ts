@@ -13,6 +13,7 @@ import { generateTrackingCode } from './utils/tracking-code.util';
 import { InjectRepository } from '@nestjs/typeorm/dist/common/typeorm.decorators';
 import { ListRequestDto } from './dto/RequestListResponse';
 import { RequestDetailsDTO } from './dto/RequestDetailsResponseDTO';
+import { FilterRequestDTO } from './dto/FilterRequestDTO';
 
 @Injectable()
 export class RequestsService {
@@ -103,12 +104,33 @@ export class RequestsService {
       return await this.requestRepository.save(request);
   }
 
-  async getAllRequests(): Promise<ListRequestDto[]> {
+  // Obtener todas las solicitudes con sus detalles relacionados con filtros opcionales
+  async getAllRequests(
+    filterDto: FilterRequestDTO
+  ): Promise<ListRequestDto[]> {
 
-    const requests = await this.requestRepository.find({
-      relations: ['category', 'department', 'status', 'userAssigned'],
-    });
+    const query = this.requestRepository
+        .createQueryBuilder('request')
+        .leftJoinAndSelect('request.category', 'category')
+        .leftJoinAndSelect('request.department', 'department')
+        .leftJoinAndSelect('request.status', 'status')
+        .leftJoinAndSelect('request.userAssigned', 'userAssigned');
+
+    if (filterDto.categoryId) {
+      query.andWhere('request.categoryId = :categoryId', { categoryId: filterDto.categoryId });
+    }
+    if (filterDto.departmentId) {
+      query.andWhere('request.departmentId = :departmentId', { departmentId: filterDto.departmentId });
+    }
+    if (filterDto.statusId) {
+      query.andWhere('request.statusId = :statusId', { statusId: filterDto.statusId });
+    }
+    if (filterDto.priority) {
+      query.andWhere('request.priority = :priority', { priority: filterDto.priority });
+    }
     
+    const requests = await query.getMany();
+      
     return requests.map(request => ({
       category: request.category.name,
       department: request.department.name,
