@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { RequestHistoryService } from '../request-history/request-history.service';
@@ -15,6 +15,8 @@ import { InjectRepository } from '@nestjs/typeorm/dist/common/typeorm.decorators
 import { ListRequestDto } from './dto/RequestListResponse';
 import { RequestDetailsDTO } from './dto/RequestDetailsResponseDTO';
 import { FilterRequestDTO } from './dto/FilterRequestDTO';
+import { AssignRequestDTO } from './dto/AssignRequestDTO';
+import { User } from 'src/users/entities/user.entity';
 
 @Injectable()
 export class RequestsService {
@@ -158,6 +160,7 @@ export class RequestsService {
       : undefined
     }));
   }
+
 // Obtener los detalles de una solicitud por su ID
   async getRequestById(requestId: string) : Promise<RequestDetailsDTO>{
     const request = await this.requestRepository.findOne({
@@ -180,7 +183,25 @@ export class RequestsService {
       creationDate: request.createdAt,
       updateDate: request.updatedAt
     };
+  }
 
+  // Asignar una solicitud a un usuario específico
+  async assignRequest(requestId: string, dto: AssignRequestDTO): Promise<void> {
+
+    const request = await this.requestRepository.findOne({ where: { id: requestId } });
+    if (!request) {
+      throw new NotFoundException(`Solicitud no encontrada`);
+    }
+  
+    const userAssigned = await this.userRepository.findOne({
+       where: { id: dto.userAssignedId }
+    });
+    if (!userAssigned) {
+      throw new NotFoundException(`Usuario no encontrado`);
+    }
+
+    request.userAssignedId = dto.userAssignedId;
+    
+    await this.requestRepository.save(request);
   }
 }
-

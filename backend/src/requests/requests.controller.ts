@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch,ParseUUIDPipe, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBadRequestResponse, ApiBearerAuth, ApiNotFoundResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { DocumentUser } from '../documents/schema/document-user.schema';
@@ -10,6 +10,7 @@ import { RequestHistoryResponseDto } from '../request-history/dto/request-histor
 import { RequestDetailsDTO } from './dto/RequestDetailsResponseDTO';
 import { FilterRequestDTO } from './dto/FilterRequestDTO';
 import { ListRequestDto } from './dto/RequestListResponse';
+import { AssignRequestDTO } from './dto/AssignRequestDTO';
 
 @ApiTags('Requests & Documents')
 @ApiBearerAuth()
@@ -45,6 +46,18 @@ export class RequestsController {
   @ApiNotFoundResponse({ status: 404, description: 'Solicitud no encontrada.' })
   async getRequestById(@Param('requestId', new ParseUUIDPipe()) requestId: string) : Promise<RequestDetailsDTO> {
     return this.requestsService.getRequestById(requestId);
+  }
+
+  // Asignar una solicitud a un usuario específico
+  @Patch('/:requestId/assign')
+  @ApiOperation({ summary: 'Asignar una solicitud a un usuario específico' })
+  @ApiResponse({ status: 200, description: 'Solicitud asignada exitosamente.' })
+  @ApiNotFoundResponse({ status: 404, description: 'Solicitud o usuario no encontrado.' })
+  async assignRequest(
+    @Param('requestId', new ParseUUIDPipe()) requestId: string,
+    @Body() Dto: AssignRequestDTO,
+  ) {
+    return this.requestsService.assignRequest(requestId, Dto);
   }
 
   @Post('/documents')
