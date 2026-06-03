@@ -1,4 +1,4 @@
-import {IsUUID, IsNotEmpty, IsString, IsEnum } from 'class-validator'
+import {IsUUID, IsNotEmpty, IsString, IsEnum, IsOptional } from 'class-validator'
 import { RequestPriority } from 'src/requests/enums/request-priority.enum'
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -41,10 +41,10 @@ export class CreateRequestDto {
     departmentId!: string;
 
     // UUID del estado al que pertenece la solicitud
-    @ApiProperty()
+    @ApiProperty({ required: false })
     @IsUUID()
-    @IsNotEmpty()
-    statusId!: string;
+    @IsOptional()
+    statusId?: string;
 
     // Prioridad de la solicitud
     @ApiProperty()
@@ -55,9 +55,9 @@ export class CreateRequestDto {
     priority!: RequestPriority;
 
     // UUID del usuario asignado a la solicitud
-    @ApiProperty()
+    @ApiProperty({ required: false })
     @IsUUID()
-    @IsNotEmpty()
-    userAssignedId!: string;
+    @IsOptional()
+    userAssignedId?: string;
 
 }

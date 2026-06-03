@@ -9,6 +9,7 @@ import { CreateInternalObservationDto } from './dto/create-internal-observation.
 import { CreateRequestDto } from './dto/create-request.dto';
 import { Repository } from 'typeorm';
 import { Request } from './entities/request.entity';
+import { RequestStatus } from '../request-statuses/entities/request-status.entity';
 import { generateTrackingCode } from './utils/tracking-code.util';
 import { InjectRepository } from '@nestjs/typeorm/dist/common/typeorm.decorators';
 import { ListRequestDto } from './dto/RequestListResponse';
@@ -23,6 +24,8 @@ export class RequestsService {
     private readonly requestHistoryService: RequestHistoryService,
       @InjectRepository(Request)
     private readonly requestRepository: Repository<Request>,
+    @InjectRepository(RequestStatus)
+    private readonly requestStatusRepository: Repository<RequestStatus>,
   ) {}
 
   async createDocument(createDocumentDto: CreateDocumentDto): Promise<DocumentUser> {
@@ -89,14 +92,26 @@ export class RequestsService {
 
   // Obtener todos los documentos de una solicitud
   async createRequest(createRequestDto: CreateRequestDto, receivedById: string) {
-
-
       const trackingCode = generateTrackingCode();
+
+      let statusId = createRequestDto.statusId;
+      if (!statusId) {
+        const receivedStatus = await this.requestStatusRepository.findOne({
+          where: { name: 'received' },
+        });
+        if (!receivedStatus) {
+          throw new BadRequestException(
+            'No se encontró el estado inicial "received" en la base de datos',
+          );
+        }
+        statusId = receivedStatus.id;
+      }
 
       const request = this.requestRepository.create({
         ...createRequestDto,
         trackingCode,
-        receivedById
+        receivedById,
+        statusId,
       });
 
       if(!request) {
