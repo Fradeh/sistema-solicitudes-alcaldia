@@ -16,7 +16,7 @@ import { ListRequestDto } from './dto/RequestListResponse';
 import { RequestDetailsDTO } from './dto/RequestDetailsResponseDTO';
 import { FilterRequestDTO } from './dto/FilterRequestDTO';
 import { AssignRequestDTO } from './dto/AssignRequestDTO';
-import { User } from 'src/users/entities/user.entity';
+import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class RequestsService {
@@ -28,6 +28,8 @@ export class RequestsService {
     private readonly requestRepository: Repository<Request>,
     @InjectRepository(RequestStatus)
     private readonly requestStatusRepository: Repository<RequestStatus>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {}
 
   async createDocument(createDocumentDto: CreateDocumentDto): Promise<DocumentUser> {

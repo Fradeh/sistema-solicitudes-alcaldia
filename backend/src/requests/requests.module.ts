@@ -4,6 +4,7 @@ import { RequestsController } from './requests.controller';
 import { DocumentsModule } from '../documents/documents.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Request } from './entities/request.entity';
+import { User } from '../users/entities/user.entity';
 
 //Relasionships with other modules
 import { DepartmentsModule } from 'src/departments/departments.module';
@@ -14,7 +15,7 @@ import { RequestHistoryModule } from 'src/request-history/request-history.module
 
 
 @Module({
-  imports: [ TypeOrmModule.forFeature([Request]), // Importa las entidades para TypeORM
+  imports: [ TypeOrmModule.forFeature([Request, User]), // Importa las entidades para TypeORM
     DocumentsModule, // conexión a MongoDB integrada
     DepartmentsModule, // conexión al módulo de departamentos
     CategoriesModule, // conexión al módulo de categorías
