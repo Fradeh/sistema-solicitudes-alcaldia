@@ -1,18 +1,32 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import { InjectRepository } from '@nestjs/typeorm';
 import { Model } from 'mongoose';
-import { RequestHistoryService } from '../request-history/request-history.service';
-import { RequestHistoryResponseDto } from '../request-history/dto/request-history-response.dto';
+import { Repository } from 'typeorm';
+import { normalizeRoleName } from '../auth/roles/role-normalizer';
+import { AppRole } from '../auth/roles/app-role.enum';
 import { DocumentUser } from '../documents/schema/document-user.schema';
+import { RequestHistoryResponseDto } from '../request-history/dto/request-history-response.dto';
+import { RequestHistoryService } from '../request-history/request-history.service';
+import { UsersService } from '../users/users.service';
+import { AssignRequestDto } from './dto/assign-request.dto';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { CreateInternalObservationDto } from './dto/create-internal-observation.dto';
 import { CreateRequestDto } from './dto/create-request.dto';
-import { Repository } from 'typeorm';
+import { RequestDetailsDto } from './dto/request-details.dto';
+import { RequestListDto } from './dto/request-list.dto';
 import { Request } from './entities/request.entity';
 import { generateTrackingCode } from './utils/tracking-code.util';
-import { InjectRepository } from '@nestjs/typeorm/dist/common/typeorm.decorators';
-import { ListRequestDto } from './dto/RequestListResponse';
-import { RequestDetailsDTO } from './dto/RequestDetailsResponseDTO';
+
+interface AuthenticatedUserContext {
+  userId: string;
+  role?: string;
+}
 
 @Injectable()
 export class RequestsService {
@@ -20,11 +34,14 @@ export class RequestsService {
     @InjectModel(DocumentUser.name)
     private readonly documentModel: Model<DocumentUser>,
     private readonly requestHistoryService: RequestHistoryService,
-      @InjectRepository(Request)
+    private readonly usersService: UsersService,
+    @InjectRepository(Request)
     private readonly requestRepository: Repository<Request>,
   ) {}
 
-  async createDocument(createDocumentDto: CreateDocumentDto): Promise<DocumentUser> {
+  async createDocument(
+    createDocumentDto: CreateDocumentDto,
+  ): Promise<DocumentUser> {
     const newDocument = new this.documentModel(createDocumentDto);
     return newDocument.save();
   }
@@ -41,7 +58,10 @@ export class RequestsService {
         .collection('requests')
         .findOne({ id: document.requestId });
     } catch (error: any) {
-      console.log('No se pudo mapear la solicitud automaticamente:', error.message);
+      console.log(
+        'No se pudo mapear la solicitud automaticamente:',
+        error.message,
+      );
     }
 
     return {
@@ -50,7 +70,9 @@ export class RequestsService {
     };
   }
 
-  async removeDocumentLogically(documentId: string): Promise<DocumentUser | null> {
+  async removeDocumentLogically(
+    documentId: string,
+  ): Promise<DocumentUser | null> {
     return this.documentModel
       .findByIdAndUpdate(documentId, { isActive: false }, { new: true })
       .exec();
@@ -58,22 +80,105 @@ export class RequestsService {
 
   async createInternalObservation(
     requestId: string,
-    userId: string,
+    currentUser: AuthenticatedUserContext,
     createInternalObservationDto: CreateInternalObservationDto,
   ) {
+    const request = await this.findRequestByIdOrThrow(requestId, [
+      'userAssigned',
+    ]);
+    this.assertOfficerCanAccess(request, currentUser);
+
     return this.requestHistoryService.registerInternalObservation({
       requestId,
-      userId,
+      userId: currentUser.userId,
       observation: createInternalObservationDto.observation,
     });
   }
 
-  async getRequestHistory(requestId: string): Promise<RequestHistoryResponseDto[]> {
-    const request = await this.requestRepository.findOne({ where: { id: requestId } });
+  async getAllRequests(): Promise<RequestListDto[]> {
+    const requests = await this.requestRepository.find({
+      relations: ['category', 'department', 'status', 'userAssigned'],
+      order: { createdAt: 'DESC' },
+    });
 
-    if (!request) {
-      throw new NotFoundException(`Solicitud #${requestId} no encontrada`);
-    }
+    return requests.map((request) => ({
+      id: request.id,
+      subject: request.subject,
+      categoryName: request.category.name,
+      departmentName: request.department.name,
+      statusName: request.status.name,
+      priority: request.priority,
+      userAssignedName: request.userAssigned
+        ? `${request.userAssigned.firstName} ${request.userAssigned.lastName}`
+        : null,
+      trackingCode: request.trackingCode,
+    }));
+  }
+
+  async getRequestById(
+    requestId: string,
+    currentUser: AuthenticatedUserContext,
+  ): Promise<RequestDetailsDto> {
+    const request = await this.findRequestByIdOrThrow(requestId, [
+      'category',
+      'department',
+      'status',
+      'userAssigned',
+      'receivedBy',
+    ]);
+
+    this.assertOfficerCanAccess(request, currentUser);
+
+    return this.toRequestDetailsDto(request);
+  }
+
+  async assignRequest(
+    requestId: string,
+    assignRequestDto: AssignRequestDto,
+    currentUser: AuthenticatedUserContext,
+  ): Promise<RequestDetailsDto> {
+    const request = await this.findRequestByIdOrThrow(requestId, [
+      'category',
+      'department',
+      'status',
+      'userAssigned',
+      'receivedBy',
+    ]);
+
+    await this.usersService.findOne(assignRequestDto.userAssignedId);
+
+    const previousAssignedUserId = request.userAssignedId;
+    request.userAssignedId = assignRequestDto.userAssignedId;
+
+    await this.requestRepository.save(request);
+
+    await this.requestHistoryService.registerAssignment({
+      requestId,
+      userId: currentUser.userId,
+      previousAssignedUserId,
+      newAssignedUserId: assignRequestDto.userAssignedId,
+    });
+
+    const updatedRequest = await this.findRequestByIdOrThrow(requestId, [
+      'category',
+      'department',
+      'status',
+      'userAssigned',
+      'receivedBy',
+    ]);
+
+    return this.toRequestDetailsDto(updatedRequest);
+  }
+
+  async getRequestHistory(
+    requestId: string,
+    currentUser: AuthenticatedUserContext,
+  ): Promise<RequestHistoryResponseDto[]> {
+    const request = await this.findRequestByIdOrThrow(requestId, [
+      'userAssigned',
+    ]);
+
+    this.assertOfficerCanAccess(request, currentUser);
 
     const history = await this.requestHistoryService.findByRequestId(requestId);
 
@@ -86,64 +191,76 @@ export class RequestsService {
     }));
   }
 
-  // Obtener todos los documentos de una solicitud
-  async createRequest(createRequestDto: CreateRequestDto, receivedById: string) {
+  async createRequest(
+    createRequestDto: CreateRequestDto,
+    receivedById: string,
+  ) {
+    const trackingCode = generateTrackingCode();
 
-
-      const trackingCode = generateTrackingCode();
-
-      const request = this.requestRepository.create({
-        ...createRequestDto,
-        trackingCode,
-        receivedById
-      });
-
-      if(!request) {
-        throw new BadRequestException('No se pudo crear la solicitud');
-      }
-      return await this.requestRepository.save(request);
-  }
-
-  async getAllRequests(): Promise<ListRequestDto[]> {
-
-    const requests = await this.requestRepository.find({
-      relations: ['category', 'department', 'status', 'userAssigned'],
+    const request = this.requestRepository.create({
+      ...createRequestDto,
+      trackingCode,
+      receivedById,
     });
-    
-    return requests.map(request => ({
-      category: request.category.name,
-      department: request.department.name,
-      status: request.status.name,
-      priority: request.priority,
-      trackingCode: request.trackingCode,
-      userAssigned: request.userAssigned ? 
-      `${request.userAssigned.firstName} ${request.userAssigned.lastName}`
-      : undefined
-    }));
+
+    if (!request) {
+      throw new BadRequestException('No se pudo crear la solicitud');
+    }
+
+    return this.requestRepository.save(request);
   }
-// Obtener los detalles de una solicitud por su ID
-  async getRequestById(requestId: string) : Promise<RequestDetailsDTO>{
+
+  private async findRequestByIdOrThrow(
+    requestId: string,
+    relations: string[] = [],
+  ): Promise<Request> {
     const request = await this.requestRepository.findOne({
       where: { id: requestId },
-      relations: ['category', 'department', 'status', 'userAssigned'],
+      relations,
     });
+
     if (!request) {
       throw new NotFoundException(`Solicitud #${requestId} no encontrada`);
     }
+
+    return request;
+  }
+
+  private assertOfficerCanAccess(
+    request: Request,
+    currentUser: AuthenticatedUserContext,
+  ): void {
+    const normalizedRole = normalizeRoleName(currentUser.role);
+
+    if (normalizedRole !== AppRole.OFFICER) {
+      return;
+    }
+
+    if (request.userAssignedId !== currentUser.userId) {
+      throw new ForbiddenException(
+        'Solo puedes consultar o modificar las solicitudes asignadas a tu usuario',
+      );
+    }
+  }
+
+  private toRequestDetailsDto(request: Request): RequestDetailsDto {
     return {
-      idRequest: request.id,
+      id: request.id,
+      subject: request.subject,
+      description: request.description,
+      applicantName: request.applicantName,
+      applicantContact: request.applicantContact,
       categoryName: request.category.name,
       departmentName: request.department.name,
       statusName: request.status.name,
       priority: request.priority,
+      userAssignedName: request.userAssigned
+        ? `${request.userAssigned.firstName} ${request.userAssigned.lastName}`
+        : null,
+      receivedByName: `${request.receivedBy.firstName} ${request.receivedBy.lastName}`,
       trackingCode: request.trackingCode,
-      userAssignedName: request.userAssigned ?
-      `${request.userAssigned.firstName} ${request.userAssigned.lastName}`
-      : undefined,
-      creationDate: request.createdAt,
-      updateDate: request.updatedAt
+      createdAt: request.createdAt,
+      updatedAt: request.updatedAt,
     };
-
   }
 }
-
