@@ -71,7 +71,11 @@ Para correr localmente necesitas tener PostgreSQL y MongoDB disponibles con las 
 ## Autenticacion y acceso
 
 - Los endpoints internos del backend usan `JwtAuthGuard`.
-- El modulo `requests` queda protegido por JWT para operaciones internas.
+- La autorizacion por rol en `requests` sigue la matriz del sprint:
+  - `RECEPTIONIST` puede crear solicitudes.
+  - `SUPERVISOR` y `ADMIN` pueden listar y asignar solicitudes.
+  - `OFFICER` puede consultar sus solicitudes e ingresar observaciones internas.
+- Los roles sembrados en la base actual se normalizan desde `recepcionista`, `revisor`, `supervisor` y `admin`.
 - En observaciones internas, el autor siempre se toma del JWT autenticado; el body no debe enviar `userId`.
 - El endpoint publico de tracking `GET /api/v1/tracking/:trackingCode` permanece sin autenticacion.
 
