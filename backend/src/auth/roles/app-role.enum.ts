@@ -1,0 +1,7 @@
+export enum AppRole {
+  RECEPTIONIST = 'RECEPTIONIST',
+  OFFICER = 'OFFICER',
+  SUPERVISOR = 'SUPERVISOR',
+  ADMIN = 'ADMIN',
+}
+
