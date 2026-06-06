@@ -3,5 +3,6 @@ export enum AppRole {
   OFFICER = 'OFFICER',
   SUPERVISOR = 'SUPERVISOR',
   ADMIN = 'ADMIN',
+  MAYOR = 'MAYOR',
 }
 
