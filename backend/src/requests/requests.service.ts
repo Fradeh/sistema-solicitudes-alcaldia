@@ -1,22 +1,35 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import { InjectRepository } from '@nestjs/typeorm';
 import { Model } from 'mongoose';
-import { RequestHistoryService } from '../request-history/request-history.service';
-import { RequestHistoryResponseDto } from '../request-history/dto/request-history-response.dto';
+import { Repository } from 'typeorm';
+import { normalizeRoleName } from '../auth/roles/role-normalizer';
+import { AppRole } from '../auth/roles/app-role.enum';
 import { DocumentUser } from '../documents/schema/document-user.schema';
+import { RequestHistoryResponseDto } from '../request-history/dto/request-history-response.dto';
+import { RequestHistoryService } from '../request-history/request-history.service';
+import { UsersService } from '../users/users.service';
+import { AssignRequestDto } from './dto/assign-request.dto';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { CreateInternalObservationDto } from './dto/create-internal-observation.dto';
 import { CreateRequestDto } from './dto/create-request.dto';
-import { Repository } from 'typeorm';
+import { FilterRequestDTO } from './dto/FilterRequestDTO';
+import { RequestDetailsDto } from './dto/request-details.dto';
+import { RequestListDto } from './dto/request-list.dto';
 import { Request } from './entities/request.entity';
 import { RequestStatus } from '../request-statuses/entities/request-status.entity';
-import { generateTrackingCode } from './utils/tracking-code.util';
-import { InjectRepository } from '@nestjs/typeorm/dist/common/typeorm.decorators';
-import { ListRequestDto } from './dto/RequestListResponse';
-import { RequestDetailsDTO } from './dto/RequestDetailsResponseDTO';
-import { FilterRequestDTO } from './dto/FilterRequestDTO';
-import { AssignRequestDTO } from './dto/AssignRequestDTO';
 import { User } from '../users/entities/user.entity';
+import { generateTrackingCode } from './utils/tracking-code.util';
+
+interface AuthenticatedUserContext {
+  userId: string;
+  role?: string;
+}
 
 @Injectable()
 export class RequestsService {
@@ -24,7 +37,8 @@ export class RequestsService {
     @InjectModel(DocumentUser.name)
     private readonly documentModel: Model<DocumentUser>,
     private readonly requestHistoryService: RequestHistoryService,
-      @InjectRepository(Request)
+    private readonly usersService: UsersService,
+    @InjectRepository(Request)
     private readonly requestRepository: Repository<Request>,
     @InjectRepository(RequestStatus)
     private readonly requestStatusRepository: Repository<RequestStatus>,
@@ -32,7 +46,9 @@ export class RequestsService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  async createDocument(createDocumentDto: CreateDocumentDto): Promise<DocumentUser> {
+  async createDocument(
+    createDocumentDto: CreateDocumentDto,
+  ): Promise<DocumentUser> {
     const newDocument = new this.documentModel(createDocumentDto);
     return newDocument.save();
   }
@@ -49,7 +65,10 @@ export class RequestsService {
         .collection('requests')
         .findOne({ id: document.requestId });
     } catch (error: any) {
-      console.log('No se pudo mapear la solicitud automaticamente:', error.message);
+      console.log(
+        'No se pudo mapear la solicitud automaticamente:',
+        error.message,
+      );
     }
 
     return {
@@ -58,7 +77,9 @@ export class RequestsService {
     };
   }
 
-  async removeDocumentLogically(documentId: string): Promise<DocumentUser | null> {
+  async removeDocumentLogically(
+    documentId: string,
+  ): Promise<DocumentUser | null> {
     return this.documentModel
       .findByIdAndUpdate(documentId, { isActive: false }, { new: true })
       .exec();
@@ -66,22 +87,136 @@ export class RequestsService {
 
   async createInternalObservation(
     requestId: string,
-    userId: string,
+    currentUser: AuthenticatedUserContext,
     createInternalObservationDto: CreateInternalObservationDto,
   ) {
+    const request = await this.findRequestByIdOrThrow(requestId, [
+      'userAssigned',
+    ]);
+    this.assertOfficerCanAccess(request, currentUser);
+
     return this.requestHistoryService.registerInternalObservation({
       requestId,
-      userId,
+      userId: currentUser.userId,
       observation: createInternalObservationDto.observation,
     });
   }
 
-  async getRequestHistory(requestId: string): Promise<RequestHistoryResponseDto[]> {
-    const request = await this.requestRepository.findOne({ where: { id: requestId } });
+  async getAllRequests(
+    filterDto: FilterRequestDTO = {},
+  ): Promise<RequestListDto[]> {
+    const query = this.requestRepository
+      .createQueryBuilder('request')
+      .leftJoinAndSelect('request.category', 'category')
+      .leftJoinAndSelect('request.department', 'department')
+      .leftJoinAndSelect('request.status', 'status')
+      .leftJoinAndSelect('request.userAssigned', 'userAssigned')
+      .orderBy('request.createdAt', 'DESC');
 
-    if (!request) {
-      throw new NotFoundException(`Solicitud #${requestId} no encontrada`);
+    if (filterDto.categoryId) {
+      query.andWhere('request.categoryId = :categoryId', {
+        categoryId: filterDto.categoryId,
+      });
     }
+
+    if (filterDto.departmentId) {
+      query.andWhere('request.departmentId = :departmentId', {
+        departmentId: filterDto.departmentId,
+      });
+    }
+
+    if (filterDto.statusId) {
+      query.andWhere('request.statusId = :statusId', {
+        statusId: filterDto.statusId,
+      });
+    }
+
+    if (filterDto.priority) {
+      query.andWhere('request.priority = :priority', {
+        priority: filterDto.priority,
+      });
+    }
+
+    const requests = await query.getMany();
+
+    return requests.map((request) => ({
+      id: request.id,
+      subject: request.subject,
+      categoryName: request.category.name,
+      departmentName: request.department.name,
+      statusName: request.status.name,
+      priority: request.priority,
+      userAssignedName: request.userAssigned
+        ? `${request.userAssigned.firstName} ${request.userAssigned.lastName}`
+        : null,
+      trackingCode: request.trackingCode,
+    }));
+  }
+
+  async getRequestById(
+    requestId: string,
+    currentUser: AuthenticatedUserContext,
+  ): Promise<RequestDetailsDto> {
+    const request = await this.findRequestByIdOrThrow(requestId, [
+      'category',
+      'department',
+      'status',
+      'userAssigned',
+      'receivedBy',
+    ]);
+
+    this.assertOfficerCanAccess(request, currentUser);
+
+    return this.toRequestDetailsDto(request);
+  }
+
+  async assignRequest(
+    requestId: string,
+    assignRequestDto: AssignRequestDto,
+    currentUser: AuthenticatedUserContext,
+  ): Promise<RequestDetailsDto> {
+    const request = await this.findRequestByIdOrThrow(requestId, [
+      'category',
+      'department',
+      'status',
+      'userAssigned',
+      'receivedBy',
+    ]);
+
+    await this.usersService.findOne(assignRequestDto.userAssignedId);
+
+    const previousAssignedUserId = request.userAssignedId;
+    request.userAssignedId = assignRequestDto.userAssignedId;
+
+    await this.requestRepository.save(request);
+
+    await this.requestHistoryService.registerAssignment({
+      requestId,
+      userId: currentUser.userId,
+      previousAssignedUserId,
+      newAssignedUserId: assignRequestDto.userAssignedId,
+    });
+
+    const updatedRequest = await this.findRequestByIdOrThrow(requestId, [
+      'category',
+      'department',
+      'status',
+      'userAssigned',
+      'receivedBy',
+    ]);
+
+    return this.toRequestDetailsDto(updatedRequest);
+  }
+
+  async getRequestHistory(
+    requestId: string,
+    currentUser: AuthenticatedUserContext,
+  ): Promise<RequestHistoryResponseDto[]> {
+    const request = await this.findRequestByIdOrThrow(requestId, [
+      'userAssigned',
+    ]);
+
+    this.assertOfficerCanAccess(request, currentUser);
 
     const history = await this.requestHistoryService.findByRequestId(requestId);
 
@@ -94,116 +229,92 @@ export class RequestsService {
     }));
   }
 
-  // Obtener todos los documentos de una solicitud
-  async createRequest(createRequestDto: CreateRequestDto, receivedById: string) {
-      const trackingCode = generateTrackingCode();
+  async createRequest(
+    createRequestDto: CreateRequestDto,
+    receivedById: string,
+  ) {
+    const trackingCode = generateTrackingCode();
 
-      let statusId = createRequestDto.statusId;
-      if (!statusId) {
-        const receivedStatus = await this.requestStatusRepository.findOne({
-          where: { name: 'received' },
-        });
-        if (!receivedStatus) {
-          throw new BadRequestException(
-            'No se encontró el estado inicial "received" en la base de datos',
-          );
-        }
-        statusId = receivedStatus.id;
-      }
-
-      const request = this.requestRepository.create({
-        ...createRequestDto,
-        trackingCode,
-        receivedById,
-        statusId,
+    let statusId = createRequestDto.statusId;
+    if (!statusId) {
+      const receivedStatus = await this.requestStatusRepository.findOne({
+        where: { name: 'received' },
       });
 
-      if(!request) {
-        throw new BadRequestException('No se pudo crear la solicitud');
+      if (!receivedStatus) {
+        throw new BadRequestException(
+          'No se encontro el estado inicial "received" en la base de datos',
+        );
       }
-      return await this.requestRepository.save(request);
+
+      statusId = receivedStatus.id;
+    }
+
+    const request = this.requestRepository.create({
+      ...createRequestDto,
+      trackingCode,
+      receivedById,
+      statusId,
+    });
+
+    if (!request) {
+      throw new BadRequestException('No se pudo crear la solicitud');
+    }
+
+    return this.requestRepository.save(request);
   }
 
-  // Obtener todas las solicitudes con sus detalles relacionados con filtros opcionales
-  async getAllRequests(
-    filterDto: FilterRequestDTO
-  ): Promise<ListRequestDto[]> {
-
-    const query = this.requestRepository
-        .createQueryBuilder('request')
-        .leftJoinAndSelect('request.category', 'category')
-        .leftJoinAndSelect('request.department', 'department')
-        .leftJoinAndSelect('request.status', 'status')
-        .leftJoinAndSelect('request.userAssigned', 'userAssigned');
-
-    if (filterDto.categoryId) {
-      query.andWhere('request.categoryId = :categoryId', { categoryId: filterDto.categoryId });
-    }
-    if (filterDto.departmentId) {
-      query.andWhere('request.departmentId = :departmentId', { departmentId: filterDto.departmentId });
-    }
-    if (filterDto.statusId) {
-      query.andWhere('request.statusId = :statusId', { statusId: filterDto.statusId });
-    }
-    if (filterDto.priority) {
-      query.andWhere('request.priority = :priority', { priority: filterDto.priority });
-    }
-    
-    const requests = await query.getMany();
-      
-    return requests.map(request => ({
-      category: request.category.name,
-      department: request.department.name,
-      status: request.status.name,
-      priority: request.priority,
-      trackingCode: request.trackingCode,
-      userAssigned: request.userAssigned ? 
-      `${request.userAssigned.firstName} ${request.userAssigned.lastName}`
-      : undefined
-    }));
-  }
-
-// Obtener los detalles de una solicitud por su ID
-  async getRequestById(requestId: string) : Promise<RequestDetailsDTO>{
+  private async findRequestByIdOrThrow(
+    requestId: string,
+    relations: string[] = [],
+  ): Promise<Request> {
     const request = await this.requestRepository.findOne({
       where: { id: requestId },
-      relations: ['category', 'department', 'status', 'userAssigned'],
+      relations,
     });
+
     if (!request) {
       throw new NotFoundException(`Solicitud #${requestId} no encontrada`);
     }
+
+    return request;
+  }
+
+  private assertOfficerCanAccess(
+    request: Request,
+    currentUser: AuthenticatedUserContext,
+  ): void {
+    const normalizedRole = normalizeRoleName(currentUser.role);
+
+    if (normalizedRole !== AppRole.OFFICER) {
+      return;
+    }
+
+    if (request.userAssignedId !== currentUser.userId) {
+      throw new ForbiddenException(
+        'Solo puedes consultar o modificar las solicitudes asignadas a tu usuario',
+      );
+    }
+  }
+
+  private toRequestDetailsDto(request: Request): RequestDetailsDto {
     return {
-      idRequest: request.id,
+      id: request.id,
+      subject: request.subject,
+      description: request.description,
+      applicantName: request.applicantName,
+      applicantContact: request.applicantContact,
       categoryName: request.category.name,
       departmentName: request.department.name,
       statusName: request.status.name,
       priority: request.priority,
+      userAssignedName: request.userAssigned
+        ? `${request.userAssigned.firstName} ${request.userAssigned.lastName}`
+        : null,
+      receivedByName: `${request.receivedBy.firstName} ${request.receivedBy.lastName}`,
       trackingCode: request.trackingCode,
-      userAssignedName: request.userAssigned ?
-      `${request.userAssigned.firstName} ${request.userAssigned.lastName}`
-      : undefined,
-      creationDate: request.createdAt,
-      updateDate: request.updatedAt
+      createdAt: request.createdAt,
+      updatedAt: request.updatedAt,
     };
-  }
-
-  // Asignar una solicitud a un usuario específico
-  async assignRequest(requestId: string, dto: AssignRequestDTO): Promise<void> {
-
-    const request = await this.requestRepository.findOne({ where: { id: requestId } });
-    if (!request) {
-      throw new NotFoundException(`Solicitud no encontrada`);
-    }
-  
-    const userAssigned = await this.userRepository.findOne({
-       where: { id: dto.userAssignedId }
-    });
-    if (!userAssigned) {
-      throw new NotFoundException(`Usuario no encontrado`);
-    }
-
-    request.userAssignedId = dto.userAssignedId;
-    
-    await this.requestRepository.save(request);
   }
 }
