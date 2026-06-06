@@ -18,9 +18,12 @@ import { AssignRequestDto } from './dto/assign-request.dto';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { CreateInternalObservationDto } from './dto/create-internal-observation.dto';
 import { CreateRequestDto } from './dto/create-request.dto';
+import { FilterRequestDTO } from './dto/FilterRequestDTO';
 import { RequestDetailsDto } from './dto/request-details.dto';
 import { RequestListDto } from './dto/request-list.dto';
 import { Request } from './entities/request.entity';
+import { RequestStatus } from '../request-statuses/entities/request-status.entity';
+import { User } from '../users/entities/user.entity';
 import { generateTrackingCode } from './utils/tracking-code.util';
 
 interface AuthenticatedUserContext {
@@ -37,6 +40,10 @@ export class RequestsService {
     private readonly usersService: UsersService,
     @InjectRepository(Request)
     private readonly requestRepository: Repository<Request>,
+    @InjectRepository(RequestStatus)
+    private readonly requestStatusRepository: Repository<RequestStatus>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {}
 
   async createDocument(
@@ -95,11 +102,42 @@ export class RequestsService {
     });
   }
 
-  async getAllRequests(): Promise<RequestListDto[]> {
-    const requests = await this.requestRepository.find({
-      relations: ['category', 'department', 'status', 'userAssigned'],
-      order: { createdAt: 'DESC' },
-    });
+  async getAllRequests(
+    filterDto: FilterRequestDTO = {},
+  ): Promise<RequestListDto[]> {
+    const query = this.requestRepository
+      .createQueryBuilder('request')
+      .leftJoinAndSelect('request.category', 'category')
+      .leftJoinAndSelect('request.department', 'department')
+      .leftJoinAndSelect('request.status', 'status')
+      .leftJoinAndSelect('request.userAssigned', 'userAssigned')
+      .orderBy('request.createdAt', 'DESC');
+
+    if (filterDto.categoryId) {
+      query.andWhere('request.categoryId = :categoryId', {
+        categoryId: filterDto.categoryId,
+      });
+    }
+
+    if (filterDto.departmentId) {
+      query.andWhere('request.departmentId = :departmentId', {
+        departmentId: filterDto.departmentId,
+      });
+    }
+
+    if (filterDto.statusId) {
+      query.andWhere('request.statusId = :statusId', {
+        statusId: filterDto.statusId,
+      });
+    }
+
+    if (filterDto.priority) {
+      query.andWhere('request.priority = :priority', {
+        priority: filterDto.priority,
+      });
+    }
+
+    const requests = await query.getMany();
 
     return requests.map((request) => ({
       id: request.id,
@@ -197,10 +235,26 @@ export class RequestsService {
   ) {
     const trackingCode = generateTrackingCode();
 
+    let statusId = createRequestDto.statusId;
+    if (!statusId) {
+      const receivedStatus = await this.requestStatusRepository.findOne({
+        where: { name: 'received' },
+      });
+
+      if (!receivedStatus) {
+        throw new BadRequestException(
+          'No se encontro el estado inicial "received" en la base de datos',
+        );
+      }
+
+      statusId = receivedStatus.id;
+    }
+
     const request = this.requestRepository.create({
       ...createRequestDto,
       trackingCode,
       receivedById,
+      statusId,
     });
 
     if (!request) {

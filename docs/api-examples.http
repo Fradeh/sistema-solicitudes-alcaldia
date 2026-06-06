@@ -1,0 +1,78 @@
+### Variables Globales de Entorno
+@baseUrl = http://localhost:3000/api/v1
+@accessToken = colocar-token-jwt-aqui
+@requestId = 3c34dd8d-13fb-4ecf-bf61-e8336f511ef7
+@trackingCode = TRK-DEMO-001
+@userId = fa12bc34-a12b-34cd-56ef-7890abcdef12
+
+### -----------------------------------------------------------------
+### MÓDULO DE AUTENTICACIÓN
+### -----------------------------------------------------------------
+
+### Login Exitoso / Obtener Token
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "recepcionista@demo.local",
+  "password": "password-demo"
+}
+
+### -----------------------------------------------------------------
+### MÓDULO DE SOLICITUDES (Requieren Autenticacionn)
+### -----------------------------------------------------------------
+
+### Crear una nueva solicitud
+POST {{baseUrl}}/requests
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "subject": "Solicitud de reparacion vial",
+  "description": "Existe un hueco frente al parque principal debido a multiples lluvias.",
+  "applicantName": "Ana Perez",
+  "applicantEmail": "ana.perez@example.com",
+  "categoryId": "cat-001",
+  "departmentId": "dep-002",
+  "priority": "medium"
+}
+
+### Listar todas las solicitudes
+GET {{baseUrl}}/requests
+Authorization: Bearer {{accessToken}}
+
+### Consultar el detalle de una solicitud por ID
+GET {{baseUrl}}/requests/{{requestId}}
+Authorization: Bearer {{accessToken}}
+
+### Asignar una solicitud a un usuario/operador
+PATCH {{baseUrl}}/requests/{{requestId}}/assign
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "assignedUserId": "{{userId}}"
+}
+
+### Consultar el historial de cambios de una solicitud
+GET {{baseUrl}}/requests/{{requestId}}/history
+Authorization: Bearer {{accessToken}}
+
+### -----------------------------------------------------------------
+### MÓDULO DE SEGUIMIENTO PÚBLICO (Sin Token)
+### -----------------------------------------------------------------
+
+### Tracking público de solicitud por código de seguimiento
+GET {{baseUrl}}/tracking/{{trackingCode}}
+
+### -----------------------------------------------------------------
+### MÓDULO DE DICCIONARIOS / SOPORTE (Requieren Autenticación)
+### -----------------------------------------------------------------
+
+### Listar categorías globales
+GET {{baseUrl}}/categories
+Authorization: Bearer {{accessToken}}
+
+### Listar dependencias / departamentos globales
+GET {{baseUrl}}/departments
+Authorization: Bearer {{accessToken}}

@@ -7,6 +7,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -29,6 +30,7 @@ import { CreateDocumentDto } from './dto/create-document.dto';
 import { CreateInternalObservationDto } from './dto/create-internal-observation.dto';
 import { CreateRequestDto } from './dto/create-request.dto';
 import { AssignRequestDto } from './dto/assign-request.dto';
+import { FilterRequestDTO } from './dto/FilterRequestDTO';
 import { RequestDetailsDto } from './dto/request-details.dto';
 import { RequestListDto } from './dto/request-list.dto';
 import { RequestsService } from './requests.service';
@@ -61,19 +63,6 @@ export class RequestsController {
     );
   }
 
-  @Get()
-  @Roles(AppRole.SUPERVISOR, AppRole.ADMIN)
-  @ApiOperation({ summary: 'Obtener la lista de todas las solicitudes' })
-  @ApiResponse({
-    status: 200,
-    description: 'Lista de solicitudes obtenida exitosamente.',
-    type: [RequestListDto],
-  })
-  @ApiForbiddenResponse({ description: 'No tienes permisos suficientes.' })
-  async getAllRequests(): Promise<RequestListDto[]> {
-    return this.requestsService.getAllRequests();
-  }
-
   @Post('register')
   @Roles(AppRole.RECEPTIONIST)
   @ApiOperation({ summary: 'Registrar una nueva solicitud (ruta heredada)' })
@@ -95,6 +84,25 @@ export class RequestsController {
     );
   }
 
+  @Get()
+  @Roles(AppRole.SUPERVISOR, AppRole.ADMIN)
+  @ApiOperation({ summary: 'Obtener la lista de todas las solicitudes' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de solicitudes obtenida exitosamente.',
+    type: [RequestListDto],
+  })
+  @ApiBadRequestResponse({
+    status: 400,
+    description: 'Error al obtener la lista de solicitudes.',
+  })
+  @ApiForbiddenResponse({ description: 'No tienes permisos suficientes.' })
+  async getAllRequests(
+    @Query() filters: FilterRequestDTO,
+  ): Promise<RequestListDto[]> {
+    return this.requestsService.getAllRequests(filters);
+  }
+
   @Get('list')
   @Roles(AppRole.SUPERVISOR, AppRole.ADMIN)
   @ApiOperation({
@@ -105,9 +113,15 @@ export class RequestsController {
     description: 'Lista de solicitudes obtenida exitosamente.',
     type: [RequestListDto],
   })
+  @ApiBadRequestResponse({
+    status: 400,
+    description: 'Error al obtener la lista de solicitudes.',
+  })
   @ApiForbiddenResponse({ description: 'No tienes permisos suficientes.' })
-  async getAllRequestsLegacy(): Promise<RequestListDto[]> {
-    return this.requestsService.getAllRequests();
+  async getAllRequestsLegacy(
+    @Query() filters: FilterRequestDTO,
+  ): Promise<RequestListDto[]> {
+    return this.requestsService.getAllRequests(filters);
   }
 
   @Get(':requestId')
@@ -162,7 +176,8 @@ export class RequestsController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Metadata del documento y datos de la solicitud obtenidos con exito.',
+    description:
+      'Metadata del documento y datos de la solicitud obtenidos con exito.',
   })
   @ApiResponse({ status: 404, description: 'Documento no encontrado.' })
   async getDocumentDetail(@Param('documentId') documentId: string) {
@@ -183,7 +198,8 @@ export class RequestsController {
   })
   @ApiResponse({
     status: 200,
-    description: 'El documento ha sido desactivado exitosamente (eliminacion logica).',
+    description:
+      'El documento ha sido desactivado exitosamente (eliminacion logica).',
     type: DocumentUser,
   })
   @ApiResponse({ status: 404, description: 'Documento no encontrado.' })
@@ -192,7 +208,10 @@ export class RequestsController {
       await this.requestsService.removeDocumentLogically(documentId);
 
     if (!deletedDocument) {
-      return { statusCode: 404, message: 'El documento que intenta eliminar no existe.' };
+      return {
+        statusCode: 404,
+        message: 'El documento que intenta eliminar no existe.',
+      };
     }
 
     return deletedDocument;
