@@ -71,6 +71,8 @@ Para correr localmente necesitas tener PostgreSQL y MongoDB disponibles con las 
 ## Autenticacion y acceso
 
 - Los endpoints internos del backend usan `JwtAuthGuard`.
+- La base incluye usuarios de demostracion para autenticar pruebas de
+  frontend sin carga manual de datos.
 - La autorizacion por rol en `requests` sigue la matriz del sprint:
   - `RECEPTIONIST` puede crear solicitudes.
   - `SUPERVISOR` y `ADMIN` pueden listar y asignar solicitudes.
