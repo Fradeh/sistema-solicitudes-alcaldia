@@ -1,21 +1,50 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Req, UseGuards } from '@nestjs/common';
-import { ApiBadRequestResponse, ApiBearerAuth, ApiNotFoundResponse, ApiOperation, ApiResponse, ApiTags, ApiParam } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+  ApiParam,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AppRole } from '../auth/roles/app-role.enum';
+import { Roles } from '../auth/roles/roles.decorator';
+import { RolesGuard } from '../auth/roles/roles.guard';
 import { DocumentUser } from '../documents/schema/document-user.schema';
+import { RequestHistoryResponseDto } from '../request-history/dto/request-history-response.dto';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { CreateInternalObservationDto } from './dto/create-internal-observation.dto';
-import { RequestsService } from './requests.service';
 import { CreateRequestDto } from './dto/create-request.dto';
-import { RequestHistoryResponseDto } from '../request-history/dto/request-history-response.dto';
+import { AssignRequestDto } from './dto/assign-request.dto';
+import { FilterRequestDTO } from './dto/FilterRequestDTO';
+import { RequestDetailsDto } from './dto/request-details.dto';
+import { RequestListDto } from './dto/request-list.dto';
+import { RequestsService } from './requests.service';
 
 @ApiTags('Requests & Documents')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('requests')
 export class RequestsController {
   constructor(private readonly requestsService: RequestsService) {}
 
-  @Post('/register')
+  @Post()
+  @Roles(AppRole.RECEPTIONIST)
   @ApiOperation({ 
     summary: 'Registrar una nueva solicitud', 
     description: 'Crea un nuevo trámite ciudadano en el sistema asignándole un código de seguimiento único.' 
@@ -35,7 +64,7 @@ export class RequestsController {
       }
     }
   })
-  @ApiResponse({ status: 400, description: 'Datos de la solicitud inválidos o mal estructurados.' })
+  @ApiBadRequestResponse({ status: 400, description: 'Datos de la solicitud inválidos o mal estructurados.' })
   @ApiResponse({ status: 401, description: 'No autorizado. Token Bearer faltante o inválido.' })
   async registerRequest(
     @Body() createRequestDto: CreateRequestDto,
@@ -44,7 +73,52 @@ export class RequestsController {
     return this.requestsService.createRequest(createRequestDto, request.user.userId);
   }
 
- @Get('/:requestId')
+  @Post('register')
+  @Roles(AppRole.RECEPTIONIST)
+  @ApiOperation({ summary: 'Registrar una nueva solicitud (ruta heredada)' })
+  @ApiResponse({ status: 201, description: 'Solicitud registrada exitosamente.' })
+  @ApiBadRequestResponse({ status: 400, description: 'Datos de solicitud invalidos.' })
+  async registerRequestLegacy(
+    @Body() createRequestDto: CreateRequestDto,
+    @Req() request: { user: { userId: string } },
+  ) {
+    return this.requestsService.createRequest(createRequestDto, request.user.userId);
+  }
+
+  @Get()
+  @Roles(AppRole.SUPERVISOR, AppRole.ADMIN)
+  @ApiOperation({ summary: 'Obtener la lista de todas las solicitudes' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de solicitudes obtenida exitosamente.',
+    type: [RequestListDto],
+  })
+  @ApiBadRequestResponse({ status: 400, description: 'Error al obtener la lista de solicitudes.' })
+  @ApiForbiddenResponse({ description: 'No tienes permisos suficientes.' })
+  async getAllRequests(
+    @Query() filters: FilterRequestDTO,
+  ): Promise<RequestListDto[]> {
+    return this.requestsService.getAllRequests(filters);
+  }
+
+  @Get('list')
+  @Roles(AppRole.SUPERVISOR, AppRole.ADMIN)
+  @ApiOperation({ summary: 'Obtener la lista de todas las solicitudes (ruta heredada)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de solicitudes obtenida exitosamente.',
+    type: [RequestListDto],
+  })
+  @ApiBadRequestResponse({ status: 400, description: 'Error al obtener la lista de solicitudes.' })
+  @ApiForbiddenResponse({ description: 'No tienes permisos suficientes.' })
+  async getAllRequestsLegacy(
+    @Query() filters: FilterRequestDTO,
+  ): Promise<RequestListDto[]> {
+    return this.requestsService.getAllRequests(filters);
+  }
+
+  @Get(':requestId')
+  @Roles(AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.ADMIN)
   @ApiOperation({ 
     summary: 'Obtener los detalles de una solicitud por su ID', 
     description: 'Retorna la información completa de un trámite específico mediante su identificador UUID.' 
@@ -67,10 +141,31 @@ export class RequestsController {
   })
   @ApiResponse({ status: 400, description: 'El parámetro requestId proporcionado no es un UUID válido.' })
   @ApiResponse({ status: 401, description: 'No autorizado. Token Bearer faltante o inválido.' })
-  @ApiResponse({ status: 404, description: 'La solicitud no existe en la base de datos.' })
-  async getRequestById(@Param('requestId', new ParseUUIDPipe()) requestId: string): Promise<any> {
-    // Volvemos a colocar el método exacto que está implementado en tu service
-    return this.requestsService.getRequestById(requestId);
+  @ApiNotFoundResponse({ description: 'Solicitud no encontrada.' })
+  @ApiForbiddenResponse({ description: 'No tienes permisos suficientes.' })
+  async getRequestById(
+    @Param('requestId', new ParseUUIDPipe()) requestId: string,
+    @Req() request: { user: { userId: string; role?: string } },
+  ): Promise<RequestDetailsDto> {
+    return this.requestsService.getRequestById(requestId, request.user);
+  }
+
+  @Patch(':requestId/assign')
+  @Roles(AppRole.SUPERVISOR, AppRole.ADMIN)
+  @ApiOperation({ summary: 'Asignar una solicitud a un usuario' })
+  @ApiResponse({
+    status: 200,
+    description: 'Solicitud asignada exitosamente.',
+    type: RequestDetailsDto,
+  })
+  @ApiNotFoundResponse({ description: 'Solicitud o usuario no encontrado.' })
+  @ApiForbiddenResponse({ description: 'No tienes permisos suficientes.' })
+  async assignRequest(
+    @Param('requestId', new ParseUUIDPipe()) requestId: string,
+    @Body() assignRequestDto: AssignRequestDto,
+    @Req() request: { user: { userId: string; role?: string } },
+  ): Promise<RequestDetailsDto> {
+    return this.requestsService.assignRequest(requestId, assignRequestDto, request.user);
   }
 
   @Post('/documents')
@@ -83,10 +178,7 @@ export class RequestsController {
 
   @Get('/documents/detail/:documentId')
   @ApiOperation({ summary: 'Obtener la metadata de un documento especifico junto a su solicitud' })
-  @ApiResponse({
-    status: 200,
-    description: 'Metadata del documento y datos de la solicitud obtenidos con exito.',
-  })
+  @ApiResponse({ status: 200, description: 'Metadata del documento y datos de la solicitud obtenidos con exito.' })
   @ApiResponse({ status: 401, description: 'No autorizado.' })
   @ApiResponse({ status: 404, description: 'El documento solicitado no existe.' })
   async getDocumentDetail(@Param('documentId') documentId: string) {
@@ -115,6 +207,7 @@ export class RequestsController {
   }
 
   @Post(':requestId/internal-observations')
+  @Roles(AppRole.OFFICER)
   @ApiOperation({ 
     summary: 'Registrar observaciones internas de una solicitud',
     description: 'Permite a los funcionarios de la alcaldía registrar comentarios internos sobre la evolución del trámite.'
@@ -127,11 +220,13 @@ export class RequestsController {
   async registerInternalObservation(
     @Param('requestId', new ParseUUIDPipe()) requestId: string,
     @Body() createInternalObservationDto: CreateInternalObservationDto,
+    @Req() request: { user: { userId: string; role?: string } },
   ) {
-    return this.requestsService.createInternalObservation(requestId, createInternalObservationDto);
+    return this.requestsService.createInternalObservation(requestId, request.user, createInternalObservationDto);
   }
 
   @Get(':requestId/history')
+  @Roles(AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.ADMIN)
   @ApiOperation({ 
     summary: 'Consultar historial completo de una solicitud',
     description: 'Retorna la bitácora de auditoría con todos los cambios de estado por los que ha pasado el trámite.'
@@ -157,9 +252,11 @@ export class RequestsController {
   @ApiResponse({ status: 400, description: 'ID de solicitud inválido.' })
   @ApiResponse({ status: 401, description: 'No autorizado.' })
   @ApiNotFoundResponse({ description: 'Solicitud no encontrada.' })
+  @ApiForbiddenResponse({ description: 'No tienes permisos suficientes.' })
   async getRequestHistory(
     @Param('requestId', new ParseUUIDPipe()) requestId: string,
+    @Req() request: { user: { userId: string; role?: string } },
   ): Promise<RequestHistoryResponseDto[]> {
-    return this.requestsService.getRequestHistory(requestId);
+    return this.requestsService.getRequestHistory(requestId, request.user);
   }
 }
