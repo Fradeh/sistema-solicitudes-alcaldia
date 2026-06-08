@@ -147,6 +147,7 @@ export class RequestsController {
     @Param('requestId', new ParseUUIDPipe()) requestId: string,
     @Req() request: { user: { userId: string; role?: string } },
   ): Promise<RequestDetailsDto> {
+    // Corregido: Se pasa el parámetro request.user que exige el servicio nuevo
     return this.requestsService.getRequestById(requestId, request.user);
   }
 
@@ -222,6 +223,7 @@ export class RequestsController {
     @Body() createInternalObservationDto: CreateInternalObservationDto,
     @Req() request: { user: { userId: string; role?: string } },
   ) {
+    // Corregido: Se envían los 3 parámetros exactos que requiere el servicio con roles
     return this.requestsService.createInternalObservation(requestId, request.user, createInternalObservationDto);
   }
 
@@ -257,6 +259,7 @@ export class RequestsController {
     @Param('requestId', new ParseUUIDPipe()) requestId: string,
     @Req() request: { user: { userId: string; role?: string } },
   ): Promise<RequestHistoryResponseDto[]> {
+    // Corregido: Se añade el parámetro request.user correspondiente
     return this.requestsService.getRequestHistory(requestId, request.user);
   }
 }
