@@ -14,6 +14,9 @@ import { InjectRepository } from '@nestjs/typeorm/dist/common/typeorm.decorators
 
 @Injectable()
 export class RequestsService {
+  getRequestById(requestId: string): any {
+    throw new Error('Method not implemented.');
+  }
   constructor(
     @InjectModel(DocumentUser.name)
     private readonly documentModel: Model<DocumentUser>,
