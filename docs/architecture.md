@@ -52,27 +52,11 @@ estado oficial de una solicitud.
   este documento y aprobar la decision con el equipo.
 
 ## Uso previsto de MongoDB
+MongoDB queda fuera del flujo oficial del sprint actual. El módulo actual en código (`academic-mongo`) se cataloga estrictamente como provisional, inactivo para flujos reales y con fines puramente académicos. El único uso aprobado para una fase posterior en MongoDB será `mayor_checklists`...
 
-MongoDB queda fuera del flujo oficial del sprint actual. Su uso aprobado para
-una fase posterior sera `mayor_checklists`, un checklist documental asociado a
-una solicitud oficial mediante su identificador de PostgreSQL.
+## Alineación pendiente del código preexistente (Módulo Provisional)
 
-La metadata documental actualmente modelada en MongoDB debe revisarse antes de
-considerarse parte de la arquitectura aprobada.
-
-## Alineacion pendiente del codigo actual
-
-La decision de este documento rige las nuevas implementaciones y correcciones.
-El codigo existente contiene comportamientos previos que no representan la
-arquitectura objetivo y deben corregirse en issues independientes:
-
-- `TrackingService` consulta solicitudes desde MongoDB para el tracking
-  publico; debe consultar la entidad `Request` en PostgreSQL.
-- La consulta de detalle de documentos intenta obtener la solicitud asociada
-  desde una coleccion MongoDB `requests`; debe obtener los datos oficiales
-  desde PostgreSQL.
-- El modulo actual de documentos utiliza MongoDB y debe revisarse frente al
-  alcance aprobado para el sprint.
+La decisión de este documento rige de forma obligatoria. Cualquier fragmento de código heredado en el módulo `academic-mongo` que intente realizar lecturas de solicitudes, estados o trackings desde MongoDB queda marcado oficialmente como **en desuso, provisional y pendiente de remoción/alineación**. La arquitectura prohíbe explícitamente tomar estos métodos previos como referencia para nuevos desarrollos; la persistencia y lectura oficial pertenece exclusivamente a PostgreSQL.
 
 ## Criterio para nuevos pull requests
 

@@ -26,15 +26,14 @@ para un checklist documental del alcalde en una fase posterior.
 
 ## Arquitectura de datos
 
-- PostgreSQL es la fuente de verdad para solicitudes, estados, historial,
-  tracking publico, usuarios, roles, departamentos y categorias.
-- MongoDB se reserva para el checklist documental del alcalde en una fase
-  posterior.
-- No se deben almacenar ni consultar solicitudes oficiales, estados, historial
-  o tracking publico desde MongoDB.
+- **PostgreSQL es la fuente única de verdad** para solicitudes, estados, historial, asignaciones y tracking público.
+- **MongoDB queda reservado exclusivamente** para el checklist documental del alcalde en una fase posterior. El módulo `academic-mongo` en el código es **provisional y está pendiente de alineación futura**, por lo que ningún flujo o texto nuevo debe orientar el uso de MongoDB para solicitudes oficiales.
 
 Consulta la decision completa en
 [`docs/architecture.md`](docs/architecture.md).
+
+El alcance tecnico del sprint backend esta definido en
+[`docs/sprint-scope.md`](docs/sprint-scope.md).
 
 ## Como correr el proyecto
 
@@ -70,3 +69,5 @@ Swagger: http://localhost:3000/api/docs
 - El backend tambien puede correrse localmente desde `backend/` con `npm run start:dev`.
 - La arquitectura oficial de persistencia esta documentada en
   `docs/architecture.md` y debe respetarse en nuevas implementaciones.
+- El alcance tecnico vigente del sprint backend esta documentado en
+  `docs/sprint-scope.md`.

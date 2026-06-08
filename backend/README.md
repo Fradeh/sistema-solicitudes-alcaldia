@@ -31,7 +31,7 @@ src/
 |-- request-history/
 |-- documents/
 |-- tracking/
-`-- academic-mongo/
+`-- academic-mongo/  <-- [Provisional y pendiente de alineación futura]
 ```
 
 ## Variables de entorno
@@ -68,6 +68,19 @@ Para correr localmente necesitas tener PostgreSQL y MongoDB disponibles con las 
 
 `npm ci` deja el entorno reproducible usando `package-lock.json`, y `npm run build` confirma que la compilacion pasa antes de levantar el servidor en modo desarrollo.
 
+## Autenticacion y acceso
+
+- Los endpoints internos del backend usan `JwtAuthGuard`.
+- La base incluye usuarios de demostracion para autenticar pruebas de
+  frontend sin carga manual de datos.
+- La autorizacion por rol en `requests` sigue la matriz del sprint:
+  - `RECEPTIONIST` puede crear solicitudes.
+  - `SUPERVISOR` y `ADMIN` pueden listar y asignar solicitudes.
+  - `OFFICER` puede consultar sus solicitudes e ingresar observaciones internas.
+- Los roles sembrados en la base actual se normalizan desde `recepcionista`, `revisor`, `supervisor` y `admin`.
+- En observaciones internas, el autor siempre se toma del JWT autenticado; el body no debe enviar `userId`.
+- El endpoint publico de tracking `GET /api/v1/tracking/:trackingCode` permanece sin autenticacion.
+
 ## Reglas de persistencia
 
 ### PostgreSQL: fuente de verdad
@@ -101,11 +114,9 @@ MongoDB queda reservado para:
 - Guardar historial oficial en MongoDB.
 - Resolver tracking publico desde MongoDB.
 
-## Alineacion pendiente
+## Alineación pendiente
 
-La documentacion representa la decision oficial para nuevas implementaciones.
-Existen modulos previos que deben ajustarse en issues separadas, incluyendo la
-consulta actual de tracking y detalle de solicitudes desde MongoDB.
+La documentación representa la decisión oficial para el diseño del sistema. El módulo `academic-mongo` en el código se mantiene únicamente de forma provisional y por motivos académicos preexistentes; sin embargo, queda marcado como inactivo para la lógica oficial. Ningún desarrollo, texto o implementación nueva debe orientar el flujo de solicitudes oficiales hacia MongoDB.
 
 Consulta el detalle en [`../docs/architecture.md`](../docs/architecture.md).
 
