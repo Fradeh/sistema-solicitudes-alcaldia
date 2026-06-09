@@ -16,6 +16,9 @@ import { RequestDetailsDTO } from './dto/RequestDetailsResponseDTO';
 import { FilterRequestDTO } from './dto/FilterRequestDTO';
 import { AssignRequestDTO } from './dto/AssignRequestDTO';
 import { User } from 'src/users/entities/user.entity';
+import { RequestHistory } from 'src/request-history/entities/request-history.entity';
+import { RequestStatus } from 'src/request-statuses/entities/request-status.entity';
+import { ChangeStatusDTO } from './dto/ChangeStatusDTO';
 
 @Injectable()
 export class RequestsService {
@@ -26,7 +29,9 @@ export class RequestsService {
       @InjectRepository(Request)
     private readonly requestRepository: Repository<Request>,
     @InjectRepository(User)
-    private readonly userRepository: Repository<User>
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(RequestStatus)
+    private readonly requestStatusRepository: Repository<RequestStatus>
   ) {}
 
   async createDocument(createDocumentDto: CreateDocumentDto): Promise<DocumentUser> {
@@ -189,6 +194,26 @@ export class RequestsService {
 
     request.userAssignedId = dto.userAssignedId;
     
+    await this.requestRepository.save(request);
+  }
+
+  async changeRequestStatus(requestId: string, dto: ChangeStatusDTO): Promise<void> {
+    const request = await this.requestRepository.findOne({
+      where: { id: requestId },
+    });
+    if (!request) {
+      throw new NotFoundException(`Solicitud no encontrada`);
+    }
+
+    const status = await this.requestStatusRepository.findOne({
+      where: { id: dto.statusId },
+    });
+    if (!status) {
+      throw new NotFoundException(`Status no encontrado`);
+    }
+
+    request.status = status;
+
     await this.requestRepository.save(request);
   }
 }
