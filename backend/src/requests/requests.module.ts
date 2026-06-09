@@ -1,28 +1,28 @@
 import { Module } from '@nestjs/common';
-import { RequestsService } from './requests.service';
-import { RequestsController } from './requests.controller'; 
-import { DocumentsModule } from '../documents/documents.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { DocumentsModule } from '../documents/documents.module';
+import { RequestHistoryModule } from '../request-history/request-history.module';
+import { RequestStatus } from '../request-statuses/entities/request-status.entity';
+import { RequestStatusesModule } from '../request-statuses/request-statuses.module';
+import { CategoriesModule } from '../categories/categories.module';
+import { DepartmentsModule } from '../departments/departments.module';
+import { User } from '../users/entities/user.entity';
+import { UsersModule } from '../users/users.module';
 import { Request } from './entities/request.entity';
-
-//Relasionships with other modules
-import { DepartmentsModule } from 'src/departments/departments.module';
-import { CategoriesModule } from 'src/categories/categories.module';
-import { RequestStatusesModule } from 'src/request-statuses/request-statuses.module';
-import { UsersModule } from 'src/users/users.module';
-import { RequestHistoryModule } from 'src/request-history/request-history.module';
-
+import { RequestsController } from './requests.controller';
+import { RequestsService } from './requests.service';
 
 @Module({
-  imports: [ TypeOrmModule.forFeature([Request]), // Importa las entidades para TypeORM
-    DocumentsModule, // conexión a MongoDB integrada
-    DepartmentsModule, // conexión al módulo de departamentos
-    CategoriesModule, // conexión al módulo de categorías
-    RequestStatusesModule, // conexión al módulo de estados de solicitudes
-    UsersModule, // conexión al módulo de usuarios
-    RequestHistoryModule, // conexión al módulo de historial de solicitudes
+  imports: [
+    TypeOrmModule.forFeature([Request, User, RequestStatus]),
+    DocumentsModule,
+    DepartmentsModule,
+    CategoriesModule,
+    RequestStatusesModule,
+    UsersModule,
+    RequestHistoryModule,
   ],
   controllers: [RequestsController],
   providers: [RequestsService],
-  })
+})
 export class RequestsModule {}
