@@ -34,6 +34,9 @@ import { FilterRequestDTO } from './dto/FilterRequestDTO';
 import { RequestDetailsDto } from './dto/request-details.dto';
 import { RequestListDto } from './dto/request-list.dto';
 import { RequestsService } from './requests.service';
+import { ListRequestDto } from './dto/RequestListResponse';
+import { AssignRequestDTO } from './dto/AssignRequestDTO';
+import { ChangeStatusDTO } from './dto/ChangeStatusDTO';
 
 @ApiTags('Requests & Documents')
 @ApiBearerAuth()
@@ -162,6 +165,15 @@ export class RequestsController {
       request.user,
     );
   }
+  @Patch('/:requestId/status')
+  @ApiOperation({ summary: 'Cambiar el estado de una solicitud' })
+  @ApiResponse({ status: 200, description: 'Estado de la solicitud actualizado exitosamente.' })
+  @ApiNotFoundResponse({ status: 404, description: 'Solicitud o estado no encontrado.' })
+  async changeRequestStatus(
+    @Param('requestId', new ParseUUIDPipe()) requestId: string, @Body() Dto: ChangeStatusDTO) {
+      return this.requestsService.changeRequestStatus(requestId, Dto);
+    }
+
 
   @Post('/documents')
   @ApiOperation({ summary: 'Registrar la metadata de un documento (MongoDB)' })

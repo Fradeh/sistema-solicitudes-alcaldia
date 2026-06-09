@@ -25,7 +25,11 @@ import { Request } from './entities/request.entity';
 import { RequestStatus } from '../request-statuses/entities/request-status.entity';
 import { User } from '../users/entities/user.entity';
 import { generateTrackingCode } from './utils/tracking-code.util';
-
+import { ListRequestDto } from './dto/RequestListResponse';
+import { RequestDetailsDTO } from './dto/RequestDetailsResponseDTO';
+import { AssignRequestDTO } from './dto/AssignRequestDTO';
+import { RequestHistory } from 'src/request-history/entities/request-history.entity';
+import { ChangeStatusDTO } from './dto/ChangeStatusDTO';
 interface AuthenticatedUserContext {
   userId: string;
   role?: string;
@@ -208,6 +212,7 @@ export class RequestsService {
     return this.toRequestDetailsDto(updatedRequest);
   }
 
+
   async getRequestHistory(
     requestId: string,
     currentUser: AuthenticatedUserContext,
@@ -314,7 +319,38 @@ export class RequestsService {
       receivedByName: `${request.receivedBy.firstName} ${request.receivedBy.lastName}`,
       trackingCode: request.trackingCode,
       createdAt: request.createdAt,
-      updatedAt: request.updatedAt,
+      updatedAt: request.updatedAt
     };
   }
+
+  async changeRequestStatus(
+    requestId: string,
+    dto: ChangeStatusDTO,
+): Promise<void> {
+
+    const request = await this.requestRepository.findOne({
+        where: { id: requestId },
+    });
+
+    if (!request) {
+        throw new NotFoundException(
+            'Solicitud no encontrada',
+        );
+    }
+
+    const status = await this.requestStatusRepository.findOne({
+        where: { id: dto.statusId },
+    });
+
+    if (!status) {
+        throw new NotFoundException(
+            'Estado no encontrado',
+        );
+    }
+
+    request.status = status;
+
+    await this.requestRepository.save(request);
+}
+
 }
