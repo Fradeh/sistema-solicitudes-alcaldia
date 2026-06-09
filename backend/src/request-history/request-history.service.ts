@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { RequestHistory } from './entities/request-history.entity';
 import { RequestHistoryEventType } from './enums/request-history-event-type.enum';
 
@@ -40,6 +40,7 @@ export class RequestHistoryService {
 
   async registerCreation(
     input: RegisterCreationInput,
+    entityManager?: EntityManager,
   ): Promise<RequestHistory> {
     const historyRecord = this.requestHistoryRepository.create({
       eventType: RequestHistoryEventType.REQUEST_CREATED,
@@ -52,11 +53,16 @@ export class RequestHistoryService {
       observation: null,
     });
 
+    if (entityManager) {
+      return entityManager.save(historyRecord);
+    }
+
     return this.requestHistoryRepository.save(historyRecord);
   }
 
   async registerStatusChange(
     input: RegisterStatusChangeInput,
+    entityManager?: EntityManager,
   ): Promise<RequestHistory | null> {
     if (input.previousStatusId === input.newStatusId) {
       return null;
@@ -73,11 +79,16 @@ export class RequestHistoryService {
       observation: input.observation ?? null,
     });
 
+    if (entityManager) {
+      return entityManager.save(historyRecord);
+    }
+
     return this.requestHistoryRepository.save(historyRecord);
   }
 
   async registerAssignment(
     input: RegisterAssignmentInput,
+    entityManager?: EntityManager,
   ): Promise<RequestHistory | null> {
     if (input.previousAssignedUserId === input.newAssignedUserId) {
       return null;
@@ -94,11 +105,16 @@ export class RequestHistoryService {
       observation: input.observation ?? null,
     });
 
+    if (entityManager) {
+      return entityManager.save(historyRecord);
+    }
+
     return this.requestHistoryRepository.save(historyRecord);
   }
 
   async registerInternalObservation(
     input: RegisterInternalObservationInput,
+    entityManager?: EntityManager,
   ): Promise<RequestHistory> {
     const historyRecord = this.requestHistoryRepository.create({
       eventType: RequestHistoryEventType.INTERNAL_OBSERVATION,
@@ -110,6 +126,10 @@ export class RequestHistoryService {
       newAssignedUserId: null,
       observation: input.observation,
     });
+
+    if (entityManager) {
+      return entityManager.save(historyRecord);
+    }
 
     return this.requestHistoryRepository.save(historyRecord);
   }
