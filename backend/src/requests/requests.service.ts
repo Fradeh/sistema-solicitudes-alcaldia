@@ -7,7 +7,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Model } from 'mongoose';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { normalizeRoleName } from '../auth/roles/role-normalizer';
 import { AppRole } from '../auth/roles/app-role.enum';
 import { DocumentUser } from '../documents/schema/document-user.schema';
@@ -48,6 +48,7 @@ export class RequestsService {
     private readonly requestStatusRepository: Repository<RequestStatus>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly dataSource: DataSource,
   ) {}
 
   async createDocument(
@@ -190,26 +191,73 @@ export class RequestsService {
     await this.usersService.findOne(assignRequestDto.userAssignedId);
 
     const previousAssignedUserId = request.userAssignedId;
+    const previousStatusId = request.statusId;
+
     request.userAssignedId = assignRequestDto.userAssignedId;
 
-    await this.requestRepository.save(request);
+    if (assignRequestDto.statusId) {
+      const statusExists = await this.requestStatusRepository.findOne({
+        where: { id: assignRequestDto.statusId },
+      });
+      if (!statusExists) {
+        throw new NotFoundException('Estado no encontrado');
+      }
+      request.statusId = assignRequestDto.statusId;
+    } else {
+      const defaultStatus = await this.requestStatusRepository.findOne({
+        where: { name: 'in_progress' },
+      });
+      if (defaultStatus) {
+        request.statusId = defaultStatus.id;
+      }
+    }
 
-    await this.requestHistoryService.registerAssignment({
-      requestId,
-      userId: currentUser.userId,
-      previousAssignedUserId,
-      newAssignedUserId: assignRequestDto.userAssignedId,
-    });
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    const updatedRequest = await this.findRequestByIdOrThrow(requestId, [
-      'category',
-      'department',
-      'status',
-      'userAssigned',
-      'receivedBy',
-    ]);
+    try {
+      await queryRunner.manager.save(request);
 
-    return this.toRequestDetailsDto(updatedRequest);
+      await this.requestHistoryService.registerAssignment(
+        {
+          requestId,
+          userId: currentUser.userId,
+          previousAssignedUserId,
+          newAssignedUserId: assignRequestDto.userAssignedId,
+        },
+        queryRunner.manager,
+      );
+
+      if (previousStatusId !== request.statusId) {
+        await this.requestHistoryService.registerStatusChange(
+          {
+            requestId,
+            userId: currentUser.userId,
+            previousStatusId,
+            newStatusId: request.statusId,
+          },
+          queryRunner.manager,
+        );
+      }
+
+      await queryRunner.commitTransaction();
+
+      const updatedRequest = await this.findRequestByIdOrThrow(requestId, [
+        'category',
+        'department',
+        'status',
+        'userAssigned',
+        'receivedBy',
+      ]);
+
+      return this.toRequestDetailsDto(updatedRequest);
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
 
@@ -266,7 +314,29 @@ export class RequestsService {
       throw new BadRequestException('No se pudo crear la solicitud');
     }
 
-    return this.requestRepository.save(request);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const savedRequest = await queryRunner.manager.save(request);
+
+      await this.requestHistoryService.registerCreation(
+        {
+          requestId: savedRequest.id,
+          userId: receivedById,
+        },
+        queryRunner.manager,
+      );
+
+      await queryRunner.commitTransaction();
+      return savedRequest;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   private async findRequestByIdOrThrow(
