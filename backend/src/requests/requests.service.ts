@@ -212,6 +212,7 @@ export class RequestsService {
     return this.toRequestDetailsDto(updatedRequest);
   }
 
+
   async getRequestHistory(
     requestId: string,
     currentUser: AuthenticatedUserContext,
@@ -321,5 +322,35 @@ export class RequestsService {
       updatedAt: request.updatedAt
     };
   }
+
+  async changeRequestStatus(
+    requestId: string,
+    dto: ChangeStatusDTO,
+): Promise<void> {
+
+    const request = await this.requestRepository.findOne({
+        where: { id: requestId },
+    });
+
+    if (!request) {
+        throw new NotFoundException(
+            'Solicitud no encontrada',
+        );
+    }
+
+    const status = await this.requestStatusRepository.findOne({
+        where: { id: dto.statusId },
+    });
+
+    if (!status) {
+        throw new NotFoundException(
+            'Estado no encontrado',
+        );
+    }
+
+    request.status = status;
+
+    await this.requestRepository.save(request);
+}
 
 }
