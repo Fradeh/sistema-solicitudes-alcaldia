@@ -165,14 +165,23 @@ export class RequestsController {
       request.user,
     );
   }
-  @Patch('/:requestId/status')
+  @Patch(':requestId/status')
+  @Roles(AppRole.SUPERVISOR, AppRole.ADMIN)
   @ApiOperation({ summary: 'Cambiar el estado de una solicitud' })
-  @ApiResponse({ status: 200, description: 'Estado de la solicitud actualizado exitosamente.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Estado de la solicitud actualizado exitosamente.',
+    type: RequestDetailsDto,
+  })
   @ApiNotFoundResponse({ status: 404, description: 'Solicitud o estado no encontrado.' })
+  @ApiForbiddenResponse({ description: 'No tienes permisos suficientes.' })
   async changeRequestStatus(
-    @Param('requestId', new ParseUUIDPipe()) requestId: string, @Body() Dto: ChangeStatusDTO) {
-      return this.requestsService.changeRequestStatus(requestId, Dto);
-    }
+    @Param('requestId', new ParseUUIDPipe()) requestId: string,
+    @Body() dto: ChangeStatusDTO,
+    @Req() request: { user: { userId: string; role?: string } },
+  ): Promise<RequestDetailsDto> {
+    return this.requestsService.changeRequestStatus(requestId, dto, request.user);
+  }
 
 
   @Post('/documents')
