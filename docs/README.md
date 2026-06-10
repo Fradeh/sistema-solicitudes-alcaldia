@@ -17,3 +17,5 @@ Documentacion tecnica y funcional del proyecto.
   usuarios de demostracion por rol.
 - [`sprint-scope.md`](sprint-scope.md): alcance tecnico del sprint backend,
   endpoints incluidos, exclusiones, dependencias y responsables.
+- [`v3-5-1-catalogo-eventos-auditables.md`](v3-5-1-catalogo-eventos-auditables.md):
+  catalogo oficial de eventos auditables para solicitudes y administracion.
