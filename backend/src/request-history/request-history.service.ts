@@ -137,7 +137,7 @@ export class RequestHistoryService {
   async findByRequestId(requestId: string): Promise<RequestHistory[]> {
     return this.requestHistoryRepository.find({
       where: { requestId },
-      order: { createdAt: 'DESC' },
+      order: { createdAt: 'ASC' },
     });
   }
 
