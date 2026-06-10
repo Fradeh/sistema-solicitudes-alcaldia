@@ -9,6 +9,9 @@ Documentacion tecnica y funcional del proyecto.
 - [`sprint-03-official-roles.md`](sprint-03-official-roles.md): definicion
   oficial de actores, responsabilidades, restricciones y equivalencias de
   roles para el Sprint 3.
+- [`sprint-03-official-states.md`](sprint-03-official-states.md): catalogo
+  oficial de estados, comportamiento y decisiones funcionales del flujo del
+  Sprint 3.
 - [`architecture.md`](architecture.md): decision oficial de arquitectura y
   persistencia del backend.
 - [`api-contract-sprint-01.md`](api-contract-sprint-01.md): contrato API v0.1
