@@ -6,6 +6,9 @@ Documentacion tecnica y funcional del proyecto.
 
 - [`sprint-03-gap-analysis.md`](sprint-03-gap-analysis.md): analisis de brecha
   entre el backend actual y el flujo funcional objetivo del Sprint 3.
+- [`sprint-03-official-roles.md`](sprint-03-official-roles.md): definicion
+  oficial de actores, responsabilidades, restricciones y equivalencias de
+  roles para el Sprint 3.
 - [`architecture.md`](architecture.md): decision oficial de arquitectura y
   persistencia del backend.
 - [`api-contract-sprint-01.md`](api-contract-sprint-01.md): contrato API v0.1
