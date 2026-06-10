@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -30,6 +31,8 @@ import { RequestDetailsDTO } from './dto/RequestDetailsResponseDTO';
 import { AssignRequestDTO } from './dto/AssignRequestDTO';
 import { RequestHistory } from 'src/request-history/entities/request-history.entity';
 import { ChangeStatusDTO } from './dto/ChangeStatusDTO';
+import { Category } from 'src/categories/entities/category.entity';
+import { Department } from 'src/departments/entities/department.entity';
 interface AuthenticatedUserContext {
   userId: string;
   role?: string;
@@ -49,6 +52,10 @@ export class RequestsService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly dataSource: DataSource,
+    @InjectRepository(Category)
+    private readonly categoryRepository: Repository<Category>,
+    @InjectRepository(Department)
+    private readonly departmentRepository: Repository<Department>,
   ) {}
 
   async createDocument(
@@ -289,6 +296,25 @@ export class RequestsService {
     const trackingCode = generateTrackingCode();
 
     let statusId = createRequestDto.statusId;
+
+    const department = await this.departmentRepository.findOne({
+    where: { id: createRequestDto.departmentId },
+    });
+
+    if (!department) {
+        throw new NotFoundException(
+            'Departamento no encontrado',
+        );
+    }
+
+    const category = await this.categoryRepository.findOne({
+      where: { id: createRequestDto.categoryId },
+    });
+
+    if (!category) {
+      throw new BadRequestException('Categoría no encontrada');
+    }
+
     if (!statusId) {
       const receivedStatus = await this.requestStatusRepository.findOne({
         where: { name: 'received' },
