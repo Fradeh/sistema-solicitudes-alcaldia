@@ -4,6 +4,8 @@ Documentacion tecnica y funcional del proyecto.
 
 ## Documentos principales
 
+- [`sprint-03-gap-analysis.md`](sprint-03-gap-analysis.md): analisis de brecha
+  entre el backend actual y el flujo funcional objetivo del Sprint 3.
 - [`architecture.md`](architecture.md): decision oficial de arquitectura y
   persistencia del backend.
 - [`api-contract-sprint-01.md`](api-contract-sprint-01.md): contrato API v0.1
