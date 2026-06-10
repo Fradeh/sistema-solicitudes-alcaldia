@@ -25,10 +25,6 @@ import { Request } from './entities/request.entity';
 import { RequestStatus } from '../request-statuses/entities/request-status.entity';
 import { User } from '../users/entities/user.entity';
 import { generateTrackingCode } from './utils/tracking-code.util';
-import { ListRequestDto } from './dto/RequestListResponse';
-import { RequestDetailsDTO } from './dto/RequestDetailsResponseDTO';
-import { AssignRequestDTO } from './dto/AssignRequestDTO';
-import { RequestHistory } from 'src/request-history/entities/request-history.entity';
 import { ChangeStatusDTO } from './dto/ChangeStatusDTO';
 interface AuthenticatedUserContext {
   userId: string;
@@ -205,11 +201,14 @@ export class RequestsService {
       request.statusId = assignRequestDto.statusId;
     } else {
       const defaultStatus = await this.requestStatusRepository.findOne({
-        where: { name: 'in_progress' },
+        where: { name: 'in_review' },
       });
-      if (defaultStatus) {
-        request.statusId = defaultStatus.id;
+      if (!defaultStatus) {
+        throw new NotFoundException(
+          'No se encontro el estado "in_review" en la base de datos',
+        );
       }
+      request.statusId = defaultStatus.id;
     }
 
     const queryRunner = this.dataSource.createQueryRunner();
@@ -225,6 +224,7 @@ export class RequestsService {
           userId: currentUser.userId,
           previousAssignedUserId,
           newAssignedUserId: assignRequestDto.userAssignedId,
+          observation: assignRequestDto.observation ?? null,
         },
         queryRunner.manager,
       );
@@ -236,6 +236,7 @@ export class RequestsService {
             userId: currentUser.userId,
             previousStatusId,
             newStatusId: request.statusId,
+            observation: assignRequestDto.observation ?? null,
           },
           queryRunner.manager,
         );
@@ -275,7 +276,12 @@ export class RequestsService {
 
     return history.map((entry) => ({
       id: entry.id,
+      requestId: entry.requestId,
       eventType: entry.eventType,
+      previousStatusId: entry.previousStatusId,
+      newStatusId: entry.newStatusId,
+      previousAssignedUserId: entry.previousAssignedUserId,
+      newAssignedUserId: entry.newAssignedUserId,
       observation: entry.observation,
       userId: entry.userId,
       createdAt: entry.createdAt,
@@ -396,31 +402,61 @@ export class RequestsService {
   async changeRequestStatus(
     requestId: string,
     dto: ChangeStatusDTO,
-): Promise<void> {
+    currentUser: AuthenticatedUserContext,
+  ): Promise<RequestDetailsDto> {
+    const request = await this.findRequestByIdOrThrow(requestId, [
+      'category',
+      'department',
+      'status',
+      'userAssigned',
+      'receivedBy',
+    ]);
 
-    const request = await this.requestRepository.findOne({
-        where: { id: requestId },
-    });
-
-    if (!request) {
-        throw new NotFoundException(
-            'Solicitud no encontrada',
-        );
-    }
-
+    const previousStatusId = request.statusId;
     const status = await this.requestStatusRepository.findOne({
-        where: { id: dto.statusId },
+      where: { id: dto.statusId },
     });
 
     if (!status) {
-        throw new NotFoundException(
-            'Estado no encontrado',
-        );
+      throw new NotFoundException('Estado no encontrado');
     }
 
-    request.status = status;
+    request.statusId = status.id;
 
-    await this.requestRepository.save(request);
-}
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      await queryRunner.manager.save(request);
+
+      await this.requestHistoryService.registerStatusChange(
+        {
+          requestId,
+          userId: currentUser.userId,
+          previousStatusId,
+          newStatusId: status.id,
+        },
+        queryRunner.manager,
+      );
+
+      await queryRunner.commitTransaction();
+
+      const updatedRequest = await this.findRequestByIdOrThrow(requestId, [
+        'category',
+        'department',
+        'status',
+        'userAssigned',
+        'receivedBy',
+      ]);
+
+      return this.toRequestDetailsDto(updatedRequest);
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
 
 }
