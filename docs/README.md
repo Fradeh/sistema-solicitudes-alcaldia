@@ -19,3 +19,6 @@ Documentacion tecnica y funcional del proyecto.
   endpoints incluidos, exclusiones, dependencias y responsables.
 - [`v3-5-1-catalogo-eventos-auditables.md`](v3-5-1-catalogo-eventos-auditables.md):
   catalogo oficial de eventos auditables para solicitudes y administracion.
+- [`v3-5-2-consolidar-eventos-flujo-solicitudes.md`](v3-5-2-consolidar-eventos-flujo-solicitudes.md):
+  consolidacion funcional de eventos del flujo de solicitudes y reglas de uso
+  de `STATUS_CHANGED`.
