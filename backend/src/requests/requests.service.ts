@@ -119,6 +119,7 @@ export class RequestsService {
       .leftJoinAndSelect('request.department', 'department')
       .leftJoinAndSelect('request.status', 'status')
       .leftJoinAndSelect('request.userAssigned', 'userAssigned')
+      .where('request.isActive = :isActive', { isActive: true })
       .orderBy('request.createdAt', 'DESC');
 
     if (filterDto.categoryId) {
@@ -150,6 +151,7 @@ export class RequestsService {
     return requests.map((request) => ({
       id: request.id,
       subject: request.subject,
+      applicantName: request.applicantName,
       categoryName: request.category.name,
       departmentName: request.department.name,
       statusName: request.status.name,
@@ -158,6 +160,7 @@ export class RequestsService {
         ? `${request.userAssigned.firstName} ${request.userAssigned.lastName}`
         : null,
       trackingCode: request.trackingCode,
+      createdAt: request.createdAt,
     }));
   }
 
