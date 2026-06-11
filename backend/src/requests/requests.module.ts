@@ -4,7 +4,9 @@ import { DocumentsModule } from '../documents/documents.module';
 import { RequestHistoryModule } from '../request-history/request-history.module';
 import { RequestStatus } from '../request-statuses/entities/request-status.entity';
 import { RequestStatusesModule } from '../request-statuses/request-statuses.module';
+import { Category } from '../categories/entities/category.entity';
 import { CategoriesModule } from '../categories/categories.module';
+import { Department } from '../departments/entities/department.entity';
 import { DepartmentsModule } from '../departments/departments.module';
 import { User } from '../users/entities/user.entity';
 import { UsersModule } from '../users/users.module';
@@ -14,7 +16,13 @@ import { RequestsService } from './requests.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Request, User, RequestStatus]),
+    TypeOrmModule.forFeature([
+      Request,
+      User,
+      RequestStatus,
+      Category,
+      Department,
+    ]),
     DocumentsModule,
     DepartmentsModule,
     CategoriesModule,
