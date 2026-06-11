@@ -379,7 +379,7 @@ export class RequestsService {
     relations: string[] = [],
   ): Promise<Request> {
     const request = await this.requestRepository.findOne({
-      where: { id: requestId },
+      where: { id: requestId, isActive: true },
       relations,
     });
 
