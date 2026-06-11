@@ -25,3 +25,6 @@ Documentacion tecnica y funcional del proyecto.
 - [`v3-5-2-consolidar-eventos-flujo-solicitudes.md`](v3-5-2-consolidar-eventos-flujo-solicitudes.md):
   consolidacion funcional de eventos del flujo de solicitudes y reglas de uso
   de `STATUS_CHANGED`.
+- [`v3-5-3-catalogo-eventos-administrativos.md`](v3-5-3-catalogo-eventos-administrativos.md):
+  catalogo oficial de eventos auditables administrativos para usuarios, roles,
+  permisos y departamentos.
