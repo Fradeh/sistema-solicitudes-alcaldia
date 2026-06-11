@@ -24,5 +24,11 @@ export class RequestListDto {
 
   @ApiProperty({ example: 'ABC-123-XYZ' })
   trackingCode!: string;
+
+  @ApiProperty({ example: 'María García' })
+  applicantName!: string;
+
+  @ApiProperty({ example: '2023-01-15T10:30:00Z' })
+  createdAt!: Date;
 }
 
