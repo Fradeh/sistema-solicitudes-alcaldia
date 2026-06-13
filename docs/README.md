@@ -28,3 +28,5 @@ Documentacion tecnica y funcional del proyecto.
 - [`v3-5-3-catalogo-eventos-administrativos.md`](v3-5-3-catalogo-eventos-administrativos.md):
   catalogo oficial de eventos auditables administrativos para usuarios, roles,
   permisos y departamentos.
+- [`v3-5-4-definir-informacion-request-history.md`](v3-5-4-definir-informacion-request-history.md):
+  definicion funcional de la informacion que debe conservar `request_history`.
