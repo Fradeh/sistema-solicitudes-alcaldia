@@ -30,3 +30,6 @@ Documentacion tecnica y funcional del proyecto.
   permisos y departamentos.
 - [`v3-5-4-definir-informacion-request-history.md`](v3-5-4-definir-informacion-request-history.md):
   definicion funcional de la informacion que debe conservar `request_history`.
+- [`v3-5-5-politicas-almacenamiento-consulta-auditoria.md`](v3-5-5-politicas-almacenamiento-consulta-auditoria.md):
+  politicas funcionales de conservacion, consulta y proteccion de la auditoria
+  e historial.
