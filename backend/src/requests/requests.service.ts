@@ -196,61 +196,63 @@ export class RequestsService {
 
     await this.usersService.findOne(assignRequestDto.userAssignedId);
 
-    const previousAssignedUserId = request.userAssignedId;
-    const previousStatusId = request.statusId;
-
-    request.userAssignedId = assignRequestDto.userAssignedId;
-
-    if (assignRequestDto.statusId) {
-      const statusExists = await this.requestStatusRepository.findOne({
-        where: { id: assignRequestDto.statusId },
-      });
-      if (!statusExists) {
-        throw new NotFoundException('Estado no encontrado');
-      }
-      request.statusId = assignRequestDto.statusId;
-    } else {
-      const defaultStatus = await this.requestStatusRepository.findOne({
-        where: { name: 'in_review' },
-      });
-      if (!defaultStatus) {
-        throw new NotFoundException(
-          'No se encontro el estado "in_review" en la base de datos',
-        );
-      }
-      request.statusId = defaultStatus.id;
-    }
-
     const queryRunner = this.dataSource.createQueryRunner();
+    
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      await queryRunner.manager.save(request);
+      
+      const previousAssignedUserId = request.userAssignedId;
+      const previousStatusId = request.statusId;
 
-      await this.requestHistoryService.registerAssignment(
-        {
-          requestId,
-          userId: currentUser.userId,
-          previousAssignedUserId,
-          newAssignedUserId: assignRequestDto.userAssignedId,
-          observation: assignRequestDto.observation ?? null,
-        },
-        queryRunner.manager,
-      );
+      request.userAssignedId = assignRequestDto.userAssignedId;
 
-      if (previousStatusId !== request.statusId) {
-        await this.requestHistoryService.registerStatusChange(
+      if (assignRequestDto.statusId) {
+        const statusExists = await queryRunner.manager.findOne(RequestStatus,{
+          where: { id: assignRequestDto.statusId }
+        });
+        if (!statusExists) {
+          throw new NotFoundException('Estado no encontrado');
+        }
+        request.statusId = assignRequestDto.statusId;
+      } else {
+        const defaultStatus = await queryRunner.manager.findOne(RequestStatus,{
+          where: { name: 'in_review' },
+        });
+        if (!defaultStatus) {
+          throw new NotFoundException(
+            'No se encontro el estado "in_review" en la base de datos',
+          );
+        }
+        request.statusId = defaultStatus.id;
+      }
+
+        await queryRunner.manager.save(request);
+
+        await this.requestHistoryService.registerAssignment(
           {
             requestId,
             userId: currentUser.userId,
-            previousStatusId,
-            newStatusId: request.statusId,
+            previousAssignedUserId,
+            newAssignedUserId: assignRequestDto.userAssignedId,
             observation: assignRequestDto.observation ?? null,
           },
           queryRunner.manager,
         );
-      }
+
+        if (previousStatusId !== request.statusId) {
+          await this.requestHistoryService.registerStatusChange(
+            {
+              requestId,
+              userId: currentUser.userId,
+              previousStatusId,
+              newStatusId: request.statusId,
+              observation: assignRequestDto.observation ?? null,
+            },
+            queryRunner.manager,
+          );
+        }
 
       await queryRunner.commitTransaction();
 
