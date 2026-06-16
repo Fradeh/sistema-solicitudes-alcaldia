@@ -33,3 +33,6 @@ Documentacion tecnica y funcional del proyecto.
 - [`v3-5-5-politicas-almacenamiento-consulta-auditoria.md`](v3-5-5-politicas-almacenamiento-consulta-auditoria.md):
   politicas funcionales de conservacion, consulta y proteccion de la auditoria
   e historial.
+- [`v3-5-6-contrato-tecnico-sistema-auditoria.md`](v3-5-6-contrato-tecnico-sistema-auditoria.md):
+  contrato tecnico del sistema de auditoria para `request_history` y
+  `audit_logs`.
