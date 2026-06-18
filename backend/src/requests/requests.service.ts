@@ -1,17 +1,14 @@
 import {
   BadRequestException,
   ForbiddenException,
-  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Model } from 'mongoose';
 import { DataSource, Repository } from 'typeorm';
 import { normalizeRoleName } from '../auth/roles/role-normalizer';
 import { AppRole } from '../auth/roles/app-role.enum';
-import { DocumentUser } from '../documents/schema/document-user.schema';
+import { RequestDocument } from '../documents/entities/request-document.entity';
 import { RequestHistoryResponseDto } from '../request-history/dto/request-history-response.dto';
 import { RequestHistoryService } from '../request-history/request-history.service';
 import { UsersService } from '../users/users.service';
@@ -37,8 +34,6 @@ interface AuthenticatedUserContext {
 @Injectable()
 export class RequestsService {
   constructor(
-    @InjectModel(DocumentUser.name)
-    private readonly documentModel: Model<DocumentUser>,
     private readonly requestHistoryService: RequestHistoryService,
     private readonly usersService: UsersService,
     @InjectRepository(Request)
@@ -52,45 +47,49 @@ export class RequestsService {
     private readonly categoryRepository: Repository<Category>,
     @InjectRepository(Department)
     private readonly departmentRepository: Repository<Department>,
+    @InjectRepository(RequestDocument)
+    private readonly requestDocumentRepository: Repository<RequestDocument>,
   ) {}
 
   async createDocument(
     createDocumentDto: CreateDocumentDto,
-  ): Promise<DocumentUser> {
-    const newDocument = new this.documentModel(createDocumentDto);
-    return newDocument.save();
+  ): Promise<RequestDocument> {
+    await this.findRequestByIdOrThrow(createDocumentDto.requestId);
+    await this.usersService.findOne(createDocumentDto.userId);
+
+    const document = this.requestDocumentRepository.create(createDocumentDto);
+    return this.requestDocumentRepository.save(document);
   }
 
-  async findDocumentWithRequestDetails(documentId: string): Promise<any> {
-    const document = await this.documentModel.findById(documentId).exec();
+  async findDocumentWithRequestDetails(documentId: string) {
+    const document = await this.requestDocumentRepository.findOne({
+      where: { id: documentId, isActive: true },
+      relations: ['request', 'request.category', 'request.department', 'request.status', 'user'],
+    });
+
     if (!document) {
       return null;
     }
 
-    let requestDetails = null;
-    try {
-      requestDetails = await this.documentModel.db
-        .collection('requests')
-        .findOne({ id: document.requestId });
-    } catch (error: any) {
-      console.log(
-        'No se pudo mapear la solicitud automaticamente:',
-        error.message,
-      );
-    }
-
     return {
       document,
-      request: requestDetails || 'Solicitud no encontrada en el sistema',
+      request: document.request,
     };
   }
 
   async removeDocumentLogically(
     documentId: string,
-  ): Promise<DocumentUser | null> {
-    return this.documentModel
-      .findByIdAndUpdate(documentId, { isActive: false }, { new: true })
-      .exec();
+  ): Promise<RequestDocument | null> {
+    const document = await this.requestDocumentRepository.findOne({
+      where: { id: documentId, isActive: true },
+    });
+
+    if (!document) {
+      return null;
+    }
+
+    document.isActive = false;
+    return this.requestDocumentRepository.save(document);
   }
 
   async createInternalObservation(
