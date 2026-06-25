@@ -40,6 +40,7 @@ pids
 *.pid.lock
 backend/uploads/*
 !backend/uploads/.gitkeep
+!backend/uploads/README.md
 !backend/uploads/requests/
 backend/uploads/requests/*
 !backend/uploads/requests/.gitkeep

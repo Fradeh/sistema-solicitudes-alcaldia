@@ -97,7 +97,7 @@ export class RequestsController {
   }
 
   @Get()
-  @Roles(AppRole.SUPERVISOR, AppRole.ADMIN)
+  @Roles(AppRole.RECEPTIONIST, AppRole.SUPERVISOR, AppRole.ADMIN)
   @ApiOperation({ summary: 'Obtener la lista de todas las solicitudes' })
   @ApiResponse({
     status: 200,
@@ -116,7 +116,7 @@ export class RequestsController {
   }
 
   @Get('list')
-  @Roles(AppRole.SUPERVISOR, AppRole.ADMIN)
+  @Roles(AppRole.RECEPTIONIST, AppRole.SUPERVISOR, AppRole.ADMIN)
   @ApiOperation({
     summary: 'Obtener la lista de todas las solicitudes (ruta heredada)',
   })
@@ -137,7 +137,7 @@ export class RequestsController {
   }
 
   @Get(':requestId')
-  @Roles(AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.ADMIN)
+  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.ADMIN)
   @ApiOperation({ summary: 'Obtener los detalles de una solicitud por su ID' })
   @ApiResponse({
     status: 200,
@@ -328,7 +328,7 @@ export class RequestsController {
   }
 
   @Get(':requestId/history')
-  @Roles(AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.ADMIN)
+  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.ADMIN)
   @ApiOperation({ summary: 'Consultar historial completo de una solicitud' })
   @ApiResponse({
     status: 200,
