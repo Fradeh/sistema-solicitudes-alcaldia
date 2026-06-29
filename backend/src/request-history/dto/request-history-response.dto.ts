@@ -28,6 +28,9 @@ export class RequestHistoryResponseDto {
   @ApiProperty({ format: 'uuid' })
   userId!: string;
 
+  @ApiProperty({ example: 'Ana López' })
+  userName!: string;
+
   @ApiProperty({ example: '2026-05-24T16:00:00.000Z' })
   createdAt!: Date;
 }

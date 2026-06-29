@@ -31,6 +31,9 @@ export class RequestListDto {
   @ApiProperty({ example: '2023-01-15T10:30:00Z' })
   createdAt!: Date;
 
+  @ApiProperty({ format: 'uuid' })
+  receivedById!: string;
+
   @ApiProperty({ example: '2026-06-28' })
   requestDate!: string;
 

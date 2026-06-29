@@ -10,6 +10,9 @@ import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
+import { normalizeRoleName } from '../auth/roles/role-normalizer';
+import { AppRole } from '../auth/roles/app-role.enum';
+import { ForbiddenException } from '@nestjs/common';
 
 @Injectable()
 export class UsersService {
@@ -42,7 +45,7 @@ export class UsersService {
   async findAll(): Promise<UserResponseDto[]> {
     const users = await this.userRepository.find({
       relations: ['role', 'department'],
-      where: { isActive: true },
+      order: { firstName: 'ASC', lastName: 'ASC' },
     });
 
     return users.map((user) => this.toResponseDto(user));
@@ -59,8 +62,23 @@ export class UsersService {
     });
   }
 
-  async update(id: string, dto: UpdateUserDto): Promise<UserResponseDto> {
-    const user = await this.findActiveUser(id);
+  async update(
+    id: string,
+    dto: UpdateUserDto,
+    currentUser?: { userId: string; role?: string },
+  ): Promise<UserResponseDto> {
+    if (
+      currentUser &&
+      currentUser.userId !== id &&
+      normalizeRoleName(currentUser.role) !== AppRole.ADMIN
+    ) {
+      throw new ForbiddenException('No puedes modificar otro usuario');
+    }
+    const user = await this.userRepository.findOne({
+      where: { id },
+      relations: ['role', 'department'],
+    });
+    if (!user) throw new NotFoundException('User not found');
 
     if (dto.email && dto.email !== user.email) {
       const existing = await this.userRepository.findOne({
@@ -76,11 +94,19 @@ export class UsersService {
       dto.password = await bcrypt.hash(dto.password, 10);
     }
 
+    if (dto.roleId && dto.departmentId === undefined) {
+      user.departmentId = null;
+    }
+
     Object.assign(user, dto);
 
     await this.userRepository.save(user);
-
-    return this.findOne(id);
+    const updated = await this.userRepository.findOne({
+      where: { id },
+      relations: ['role', 'department'],
+    });
+    if (!updated) throw new NotFoundException('User not found');
+    return this.toResponseDto(updated);
   }
 
   async remove(id: string): Promise<void> {
@@ -130,7 +156,7 @@ export class UsersService {
         id: user.role.id,
         name: user.role.name,
       },
-      departmentId: user.departmentId,
+      departmentId: user.departmentId ?? undefined,
       department: user.department
         ? {
             id: user.department.id,

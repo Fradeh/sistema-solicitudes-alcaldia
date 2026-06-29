@@ -24,6 +24,7 @@ import { RequestStatus } from '../request-statuses/entities/request-status.entit
 import { User } from '../users/entities/user.entity';
 import { generateTrackingCode } from './utils/tracking-code.util';
 import { ChangeStatusDTO } from './dto/ChangeStatusDTO';
+import { ChangeDepartmentDto } from './dto/change-department.dto';
 import { Category } from 'src/categories/entities/category.entity';
 import { Department } from 'src/departments/entities/department.entity';
 interface AuthenticatedUserContext {
@@ -111,6 +112,7 @@ export class RequestsService {
 
   async getAllRequests(
     filterDto: FilterRequestDTO = {},
+    currentUser?: AuthenticatedUserContext,
   ): Promise<RequestListDto[]> {
     const query = this.requestRepository
       .createQueryBuilder('request')
@@ -120,6 +122,12 @@ export class RequestsService {
       .leftJoinAndSelect('request.userAssigned', 'userAssigned')
       .where('request.isActive = :isActive', { isActive: true })
       .orderBy('request.createdAt', 'DESC');
+
+    if (normalizeRoleName(currentUser?.role) === AppRole.OFFICER) {
+      query.andWhere('request.userAssignedId = :currentUserId', {
+        currentUserId: currentUser?.userId,
+      });
+    }
 
     if (filterDto.categoryId) {
       query.andWhere('request.categoryId = :categoryId', {
@@ -173,6 +181,7 @@ export class RequestsService {
         : null,
       trackingCode: request.trackingCode,
       createdAt: request.createdAt,
+      receivedById: request.receivedById,
       requestDate: request.requestDate,
       deadline: request.deadline,
       documentName: document?.fileName ?? null,
@@ -313,6 +322,7 @@ export class RequestsService {
       newAssignedUserId: entry.newAssignedUserId,
       observation: entry.observation,
       userId: entry.userId,
+      userName: `${entry.user.firstName} ${entry.user.lastName}`,
       createdAt: entry.createdAt,
     }));
   }
@@ -343,9 +353,18 @@ export class RequestsService {
       throw new BadRequestException('Categoría no encontrada');
     }
 
+    const assignedOfficer = await this.userRepository
+      .createQueryBuilder('user')
+      .innerJoinAndSelect('user.role', 'role')
+      .where('user.departmentId = :departmentId', { departmentId: department.id })
+      .andWhere('user.isActive = true')
+      .andWhere('LOWER(role.name) IN (:...roles)', { roles: ['officer', 'revisor'] })
+      .orderBy('user.createdAt', 'ASC')
+      .getOne();
+
     if (!statusId) {
       const receivedStatus = await this.requestStatusRepository.findOne({
-        where: { name: 'received' },
+        where: { name: assignedOfficer ? 'in_review' : 'received' },
       });
 
       if (!receivedStatus) {
@@ -362,6 +381,7 @@ export class RequestsService {
       trackingCode,
       receivedById,
       statusId,
+      userAssignedId: assignedOfficer?.id ?? null,
     });
 
     if (!request) {
@@ -382,6 +402,19 @@ export class RequestsService {
         },
         queryRunner.manager,
       );
+
+      if (assignedOfficer) {
+        await this.requestHistoryService.registerAssignment(
+          {
+            requestId: savedRequest.id,
+            userId: receivedById,
+            previousAssignedUserId: null,
+            newAssignedUserId: assignedOfficer.id,
+            observation: 'Asignacion automatica al registrar la solicitud',
+          },
+          queryRunner.manager,
+        );
+      }
 
       await queryRunner.commitTransaction();
       return savedRequest;
@@ -446,6 +479,7 @@ export class RequestsService {
         ? `${request.userAssigned.firstName} ${request.userAssigned.lastName}`
         : null,
       receivedByName: `${request.receivedBy.firstName} ${request.receivedBy.lastName}`,
+      receivedById: request.receivedById,
       trackingCode: request.trackingCode,
       createdAt: request.createdAt,
       updatedAt: request.updatedAt,
@@ -469,6 +503,8 @@ export class RequestsService {
       'receivedBy',
     ]);
 
+    this.assertOfficerCanAccess(request, currentUser);
+
     const previousStatusId = request.statusId;
     const status = await this.requestStatusRepository.findOne({
       where: { id: dto.statusId },
@@ -479,6 +515,7 @@ export class RequestsService {
     }
 
     request.statusId = status.id;
+    request.status = status;
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -493,6 +530,7 @@ export class RequestsService {
           userId: currentUser.userId,
           previousStatusId,
           newStatusId: status.id,
+          observation: dto.observation,
         },
         queryRunner.manager,
       );
@@ -514,6 +552,40 @@ export class RequestsService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  async changeRequestDepartment(
+    requestId: string,
+    dto: ChangeDepartmentDto,
+    currentUser: AuthenticatedUserContext,
+  ): Promise<RequestDetailsDto> {
+    const request = await this.findRequestByIdOrThrow(requestId, [
+      'category', 'department', 'status', 'userAssigned', 'receivedBy',
+    ]);
+    const department = await this.departmentRepository.findOne({
+      where: { id: dto.departmentId, isActive: true },
+    });
+    if (!department) throw new NotFoundException('Departamento no encontrado');
+
+    const previousDepartment = request.department.name;
+    const assignedOfficer = await this.userRepository
+      .createQueryBuilder('user')
+      .innerJoinAndSelect('user.role', 'role')
+      .where('user.departmentId = :departmentId', { departmentId: department.id })
+      .andWhere('user.isActive = true')
+      .andWhere('LOWER(role.name) IN (:...roles)', { roles: ['officer', 'revisor'] })
+      .orderBy('user.createdAt', 'ASC')
+      .getOne();
+    request.departmentId = department.id;
+    request.userAssignedId = assignedOfficer?.id ?? null;
+    await this.requestRepository.save(request);
+    await this.requestHistoryService.registerInternalObservation({
+      requestId,
+      userId: currentUser.userId,
+      observation: dto.observation || `Departamento cambiado de ${previousDepartment} a ${department.name}`,
+    });
+
+    return this.getRequestById(requestId, currentUser);
   }
 
 }

@@ -34,6 +34,9 @@ export class RequestDetailsDto {
   @ApiProperty({ example: 'Ana Lopez' })
   receivedByName!: string;
 
+  @ApiProperty({ format: 'uuid' })
+  receivedById!: string;
+
   @ApiProperty({ example: 'ABC-123-XYZ' })
   trackingCode!: string;
 

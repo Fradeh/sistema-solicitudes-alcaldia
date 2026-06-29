@@ -46,6 +46,7 @@ import { RequestsService } from './requests.service';
 import { ListRequestDto } from './dto/RequestListResponse';
 import { AssignRequestDTO } from './dto/AssignRequestDTO';
 import { ChangeStatusDTO } from './dto/ChangeStatusDTO';
+import { ChangeDepartmentDto } from './dto/change-department.dto';
 
 @ApiTags('Requests & Documents')
 @ApiBearerAuth()
@@ -97,7 +98,7 @@ export class RequestsController {
   }
 
   @Get()
-  @Roles(AppRole.RECEPTIONIST, AppRole.SUPERVISOR, AppRole.ADMIN)
+  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.ADMIN)
   @ApiOperation({ summary: 'Obtener la lista de todas las solicitudes' })
   @ApiResponse({
     status: 200,
@@ -111,12 +112,13 @@ export class RequestsController {
   @ApiForbiddenResponse({ description: 'No tienes permisos suficientes.' })
   async getAllRequests(
     @Query() filters: FilterRequestDTO,
+    @Req() request: { user: { userId: string; role?: string } },
   ): Promise<RequestListDto[]> {
-    return this.requestsService.getAllRequests(filters);
+    return this.requestsService.getAllRequests(filters, request.user);
   }
 
   @Get('list')
-  @Roles(AppRole.RECEPTIONIST, AppRole.SUPERVISOR, AppRole.ADMIN)
+  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.ADMIN)
   @ApiOperation({
     summary: 'Obtener la lista de todas las solicitudes (ruta heredada)',
   })
@@ -132,8 +134,9 @@ export class RequestsController {
   @ApiForbiddenResponse({ description: 'No tienes permisos suficientes.' })
   async getAllRequestsLegacy(
     @Query() filters: FilterRequestDTO,
+    @Req() request: { user: { userId: string; role?: string } },
   ): Promise<RequestListDto[]> {
-    return this.requestsService.getAllRequests(filters);
+    return this.requestsService.getAllRequests(filters, request.user);
   }
 
   @Get(':requestId')
@@ -154,7 +157,7 @@ export class RequestsController {
   }
 
   @Patch(':requestId/assign')
-  @Roles(AppRole.SUPERVISOR, AppRole.ADMIN)
+  @Roles(AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.ADMIN)
   @ApiOperation({ summary: 'Asignar una solicitud a un usuario' })
   @ApiResponse({
     status: 200,
@@ -175,7 +178,7 @@ export class RequestsController {
     );
   }
   @Patch(':requestId/status')
-  @Roles(AppRole.SUPERVISOR, AppRole.ADMIN)
+  @Roles(AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.ADMIN)
   @ApiOperation({ summary: 'Cambiar el estado de una solicitud' })
   @ApiResponse({
     status: 200,
@@ -190,6 +193,17 @@ export class RequestsController {
     @Req() request: { user: { userId: string; role?: string } },
   ): Promise<RequestDetailsDto> {
     return this.requestsService.changeRequestStatus(requestId, dto, request.user);
+  }
+
+  @Patch(':requestId/department')
+  @Roles(AppRole.RECEPTIONIST, AppRole.SUPERVISOR, AppRole.ADMIN)
+  @ApiOperation({ summary: 'Cambiar el departamento de una solicitud' })
+  async changeRequestDepartment(
+    @Param('requestId', new ParseUUIDPipe()) requestId: string,
+    @Body() dto: ChangeDepartmentDto,
+    @Req() request: { user: { userId: string; role?: string } },
+  ): Promise<RequestDetailsDto> {
+    return this.requestsService.changeRequestDepartment(requestId, dto, request.user);
   }
 
 
