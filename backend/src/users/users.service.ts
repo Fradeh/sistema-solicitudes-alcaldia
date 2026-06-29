@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -13,15 +14,22 @@ import { UserResponseDto } from './dto/user-response.dto';
 import { normalizeRoleName } from '../auth/roles/role-normalizer';
 import { AppRole } from '../auth/roles/app-role.enum';
 import { ForbiddenException } from '@nestjs/common';
+import { Role } from '../roles/entities/role.entity';
+import { Department } from '../departments/entities/department.entity';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Role)
+    private readonly roleRepository: Repository<Role>,
+    @InjectRepository(Department)
+    private readonly departmentRepository: Repository<Department>,
   ) {}
 
   async create(dto: CreateUserDto): Promise<UserResponseDto> {
+    await this.validateOrganizationalAssignment(dto.roleId, dto.departmentId);
     const existing = await this.userRepository.findOne({
       where: { email: dto.email },
     });
@@ -79,6 +87,17 @@ export class UsersService {
       relations: ['role', 'department'],
     });
     if (!user) throw new NotFoundException('User not found');
+
+    const effectiveDepartmentId =
+      dto.departmentId !== undefined
+        ? dto.departmentId
+        : dto.roleId
+          ? undefined
+          : (user.departmentId ?? undefined);
+    await this.validateOrganizationalAssignment(
+      dto.roleId ?? user.roleId,
+      effectiveDepartmentId,
+    );
 
     if (dto.email && dto.email !== user.email) {
       const existing = await this.userRepository.findOne({
@@ -142,6 +161,36 @@ export class UsersService {
     }
 
     return user;
+  }
+
+  private async validateOrganizationalAssignment(
+    roleId: string,
+    departmentId?: string,
+  ): Promise<void> {
+    const role = await this.roleRepository.findOne({
+      where: { id: roleId, isActive: true },
+    });
+    if (!role) throw new BadRequestException('El rol seleccionado no existe o está inactivo');
+
+    const normalizedRole = normalizeRoleName(role.name);
+    const requiresDepartment =
+      normalizedRole === AppRole.OFFICER || normalizedRole === AppRole.SUPERVISOR;
+    if (requiresDepartment && !departmentId) {
+      throw new BadRequestException(
+        'Los funcionarios y jefes deben estar asignados a un departamento',
+      );
+    }
+
+    if (departmentId) {
+      const department = await this.departmentRepository.findOne({
+        where: { id: departmentId, isActive: true },
+      });
+      if (!department) {
+        throw new BadRequestException(
+          'El departamento seleccionado no existe o está inactivo',
+        );
+      }
+    }
   }
 
   private toResponseDto(user: User): UserResponseDto {

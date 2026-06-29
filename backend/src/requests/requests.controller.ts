@@ -98,7 +98,7 @@ export class RequestsController {
   }
 
   @Get()
-  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.ADMIN)
+  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.MAYOR, AppRole.ADMIN)
   @ApiOperation({ summary: 'Obtener la lista de todas las solicitudes' })
   @ApiResponse({
     status: 200,
@@ -118,7 +118,7 @@ export class RequestsController {
   }
 
   @Get('list')
-  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.ADMIN)
+  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.MAYOR, AppRole.ADMIN)
   @ApiOperation({
     summary: 'Obtener la lista de todas las solicitudes (ruta heredada)',
   })
@@ -140,7 +140,7 @@ export class RequestsController {
   }
 
   @Get(':requestId')
-  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.ADMIN)
+  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.MAYOR, AppRole.ADMIN)
   @ApiOperation({ summary: 'Obtener los detalles de una solicitud por su ID' })
   @ApiResponse({
     status: 200,
@@ -178,7 +178,7 @@ export class RequestsController {
     );
   }
   @Patch(':requestId/status')
-  @Roles(AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.ADMIN)
+  @Roles(AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.MAYOR, AppRole.ADMIN)
   @ApiOperation({ summary: 'Cambiar el estado de una solicitud' })
   @ApiResponse({
     status: 200,
@@ -215,7 +215,7 @@ export class RequestsController {
   }
 
   @Post(':requestId/documents/upload')
-  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.ADMIN)
+  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.MAYOR, AppRole.ADMIN)
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
@@ -342,7 +342,7 @@ export class RequestsController {
   }
 
   @Get(':requestId/history')
-  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.ADMIN)
+  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.MAYOR, AppRole.ADMIN)
   @ApiOperation({ summary: 'Consultar historial completo de una solicitud' })
   @ApiResponse({
     status: 200,
