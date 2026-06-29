@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { normalizeRoleName } from '../auth/roles/role-normalizer';
 import { AppRole } from '../auth/roles/app-role.enum';
 import { RequestDocument } from '../documents/entities/request-document.entity';
@@ -147,7 +147,20 @@ export class RequestsService {
 
     const requests = await query.getMany();
 
-    return requests.map((request) => ({
+    const documents = requests.length
+      ? await this.requestDocumentRepository.find({
+          where: {
+            requestId: In(requests.map((request) => request.id)),
+            isActive: true,
+          },
+          order: { createdAt: 'DESC' },
+        })
+      : [];
+
+    return requests.map((request) => {
+      const document = documents.find((item) => item.requestId === request.id);
+
+      return {
       id: request.id,
       subject: request.subject,
       applicantName: request.applicantName,
@@ -160,7 +173,12 @@ export class RequestsService {
         : null,
       trackingCode: request.trackingCode,
       createdAt: request.createdAt,
-    }));
+      requestDate: request.requestDate,
+      deadline: request.deadline,
+      documentName: document?.fileName ?? null,
+      documentUrl: document?.url ?? null,
+      };
+    });
   }
 
   async getRequestById(
@@ -408,7 +426,12 @@ export class RequestsService {
     }
   }
 
-  private toRequestDetailsDto(request: Request): RequestDetailsDto {
+  private async toRequestDetailsDto(request: Request): Promise<RequestDetailsDto> {
+    const document = await this.requestDocumentRepository.findOne({
+      where: { requestId: request.id, isActive: true },
+      order: { createdAt: 'DESC' },
+    });
+
     return {
       id: request.id,
       subject: request.subject,
@@ -425,7 +448,11 @@ export class RequestsService {
       receivedByName: `${request.receivedBy.firstName} ${request.receivedBy.lastName}`,
       trackingCode: request.trackingCode,
       createdAt: request.createdAt,
-      updatedAt: request.updatedAt
+      updatedAt: request.updatedAt,
+      requestDate: request.requestDate,
+      deadline: request.deadline,
+      documentName: document?.fileName ?? null,
+      documentUrl: document?.url ?? null,
     };
   }
 

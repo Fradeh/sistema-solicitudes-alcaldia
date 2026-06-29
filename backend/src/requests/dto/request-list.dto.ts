@@ -30,5 +30,17 @@ export class RequestListDto {
 
   @ApiProperty({ example: '2023-01-15T10:30:00Z' })
   createdAt!: Date;
+
+  @ApiProperty({ example: '2026-06-28' })
+  requestDate!: string;
+
+  @ApiProperty({ example: '2026-07-05', nullable: true })
+  deadline!: string | null;
+
+  @ApiProperty({ example: 'solicitud.pdf', nullable: true })
+  documentName!: string | null;
+
+  @ApiProperty({ example: '/uploads/requests/id/solicitud.pdf', nullable: true })
+  documentUrl!: string | null;
 }
 
