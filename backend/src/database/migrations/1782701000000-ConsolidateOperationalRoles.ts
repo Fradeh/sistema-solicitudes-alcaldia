@@ -9,14 +9,14 @@ export class ConsolidateOperationalRoles1782701000000
     await queryRunner.query(`
       UPDATE "users" u
       SET "role_id" = target.id
-      FROM "roles" current_role, "roles" target
-      WHERE u.role_id = current_role.id
+      FROM "roles" source_role, "roles" target
+      WHERE u.role_id = source_role.id
         AND target.name = CASE
-          WHEN current_role.name = 'recepcionista' THEN 'RECEPTIONIST'
-          WHEN current_role.name IN ('revisor', 'supervisor', 'SUPERVISOR') THEN 'OFFICER'
-          WHEN current_role.name = 'alcalde' THEN 'MAYOR'
+          WHEN source_role.name = 'recepcionista' THEN 'RECEPTIONIST'
+          WHEN source_role.name IN ('revisor', 'supervisor', 'SUPERVISOR') THEN 'OFFICER'
+          WHEN source_role.name = 'alcalde' THEN 'MAYOR'
         END
-        AND current_role.name IN (
+        AND source_role.name IN (
           'recepcionista', 'revisor', 'supervisor', 'SUPERVISOR', 'alcalde'
         )
     `);
