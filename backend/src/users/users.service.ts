@@ -29,7 +29,10 @@ export class UsersService {
   ) {}
 
   async create(dto: CreateUserDto): Promise<UserResponseDto> {
-    await this.validateOrganizationalAssignment(dto.roleId, dto.departmentId);
+    const departmentId = await this.resolveDepartmentId(
+      dto.roleId,
+      dto.departmentId,
+    );
     const existing = await this.userRepository.findOne({
       where: { email: dto.email },
     });
@@ -42,6 +45,7 @@ export class UsersService {
 
     const user = this.userRepository.create({
       ...dto,
+      departmentId: departmentId ?? null,
       password: hashedPassword,
     });
 
@@ -88,16 +92,20 @@ export class UsersService {
     });
     if (!user) throw new NotFoundException('User not found');
 
-    const effectiveDepartmentId =
-      dto.departmentId !== undefined
-        ? dto.departmentId
-        : dto.roleId
-          ? undefined
-          : (user.departmentId ?? undefined);
-    await this.validateOrganizationalAssignment(
-      dto.roleId ?? user.roleId,
-      effectiveDepartmentId,
-    );
+    if (dto.roleId || dto.departmentId !== undefined) {
+      const requestedDepartmentId =
+        dto.departmentId !== undefined
+          ? dto.departmentId
+          : dto.roleId
+            ? undefined
+            : (user.departmentId ?? undefined);
+      user.departmentId =
+        (await this.resolveDepartmentId(
+          dto.roleId ?? user.roleId,
+          requestedDepartmentId,
+        )) ?? null;
+      delete dto.departmentId;
+    }
 
     if (dto.email && dto.email !== user.email) {
       const existing = await this.userRepository.findOne({
@@ -111,10 +119,6 @@ export class UsersService {
 
     if (dto.password) {
       dto.password = await bcrypt.hash(dto.password, 10);
-    }
-
-    if (dto.roleId && dto.departmentId === undefined) {
-      user.departmentId = null;
     }
 
     Object.assign(user, dto);
@@ -163,21 +167,40 @@ export class UsersService {
     return user;
   }
 
-  private async validateOrganizationalAssignment(
+  private async resolveDepartmentId(
     roleId: string,
     departmentId?: string,
-  ): Promise<void> {
+  ): Promise<string | undefined> {
     const role = await this.roleRepository.findOne({
       where: { id: roleId, isActive: true },
     });
     if (!role) throw new BadRequestException('El rol seleccionado no existe o está inactivo');
 
     const normalizedRole = normalizeRoleName(role.name);
+    const fixedDepartmentName =
+      normalizedRole === AppRole.RECEPTIONIST
+        ? 'Secretaría General'
+        : normalizedRole === AppRole.MAYOR
+          ? 'Despacho del Alcalde'
+          : undefined;
+
+    if (fixedDepartmentName) {
+      const fixedDepartment = await this.departmentRepository.findOne({
+        where: { name: fixedDepartmentName, isActive: true },
+      });
+      if (!fixedDepartment) {
+        throw new BadRequestException(
+          `No existe el departamento requerido: ${fixedDepartmentName}`,
+        );
+      }
+      return fixedDepartment.id;
+    }
+
     const requiresDepartment =
       normalizedRole === AppRole.OFFICER || normalizedRole === AppRole.SUPERVISOR;
     if (requiresDepartment && !departmentId) {
       throw new BadRequestException(
-        'Los funcionarios y jefes deben estar asignados a un departamento',
+        'El usuario debe estar asignado a un departamento',
       );
     }
 
@@ -190,7 +213,10 @@ export class UsersService {
           'El departamento seleccionado no existe o está inactivo',
         );
       }
+      return department.id;
     }
+
+    return undefined;
   }
 
   private toResponseDto(user: User): UserResponseDto {
