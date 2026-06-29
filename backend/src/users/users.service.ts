@@ -17,6 +17,19 @@ import { ForbiddenException } from '@nestjs/common';
 import { Role } from '../roles/entities/role.entity';
 import { Department } from '../departments/entities/department.entity';
 
+const RESERVED_DEPARTMENTS = new Set([
+  'despacho del alcalde',
+  'secretaria general',
+  'direccion de tecnologia de la informacion',
+]);
+
+const normalizeDepartmentName = (name: string) =>
+  name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -211,6 +224,14 @@ export class UsersService {
       if (!department) {
         throw new BadRequestException(
           'El departamento seleccionado no existe o está inactivo',
+        );
+      }
+      if (
+        requiresDepartment &&
+        RESERVED_DEPARTMENTS.has(normalizeDepartmentName(department.name))
+      ) {
+        throw new BadRequestException(
+          'Selecciona un departamento operativo para este usuario',
         );
       }
       return department.id;
