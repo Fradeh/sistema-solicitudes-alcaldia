@@ -90,6 +90,20 @@ export class Request {
     priority!: RequestPriority;
 
     @Column({
+        type: 'date',
+        name: 'request_date',
+        default: () => 'CURRENT_DATE',
+    })
+    requestDate!: string;
+
+    @Column({
+        type: 'date',
+        name: 'deadline',
+        nullable: true,
+    })
+    deadline!: string | null;
+
+    @Column({
         type: 'uuid',
         name: 'received_by_id',
     })

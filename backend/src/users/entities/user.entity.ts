@@ -40,7 +40,7 @@ export class User {
   role!: Role;
 
   @Column({ type: 'uuid', name: 'department_id', nullable: true })
-  departmentId?: string;
+  departmentId!: string | null;
 
   @ManyToOne(() => Department, { nullable: true })
   @JoinColumn({ name: 'department_id' })
