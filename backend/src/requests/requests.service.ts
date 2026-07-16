@@ -300,6 +300,22 @@ export class RequestsService {
   }
 
 
+  async registerDocumentView(
+    requestId: string,
+    currentUser: AuthenticatedUserContext,
+  ) {
+    const request = await this.findRequestByIdOrThrow(requestId, [
+      'userAssigned',
+    ]);
+
+    this.assertOfficerCanAccess(request, currentUser);
+
+    return this.requestHistoryService.registerDocumentView({
+      requestId,
+      userId: currentUser.userId,
+    });
+  }
+
   async getRequestHistory(
     requestId: string,
     currentUser: AuthenticatedUserContext,
