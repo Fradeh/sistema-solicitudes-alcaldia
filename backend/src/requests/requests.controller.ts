@@ -341,6 +341,20 @@ export class RequestsController {
     );
   }
 
+  @Post(':requestId/document-views')
+  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.MAYOR, AppRole.ADMIN)
+  @ApiOperation({ summary: 'Registrar la primera vista de un documento por usuario' })
+  @ApiResponse({
+    status: 201,
+    description: 'Vista de documento registrada en el historial.',
+  })
+  async registerDocumentView(
+    @Param('requestId', new ParseUUIDPipe()) requestId: string,
+    @Req() request: { user: { userId: string; role?: string } },
+  ) {
+    return this.requestsService.registerDocumentView(requestId, request.user);
+  }
+
   @Get(':requestId/history')
   @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.MAYOR, AppRole.ADMIN)
   @ApiOperation({ summary: 'Consultar historial completo de una solicitud' })

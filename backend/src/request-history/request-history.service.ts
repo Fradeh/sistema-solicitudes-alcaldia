@@ -31,6 +31,11 @@ export interface RegisterInternalObservationInput {
   observation: string;
 }
 
+export interface RegisterDocumentViewInput {
+  requestId: string;
+  userId: string;
+}
+
 @Injectable()
 export class RequestHistoryService {
   constructor(
@@ -130,6 +135,35 @@ export class RequestHistoryService {
     if (entityManager) {
       return entityManager.save(historyRecord);
     }
+
+    return this.requestHistoryRepository.save(historyRecord);
+  }
+
+  async registerDocumentView(
+    input: RegisterDocumentViewInput,
+  ): Promise<RequestHistory> {
+    const existing = await this.requestHistoryRepository.findOne({
+      where: {
+        requestId: input.requestId,
+        userId: input.userId,
+        eventType: RequestHistoryEventType.DOCUMENT_VIEWED,
+      },
+    });
+
+    if (existing) {
+      return existing;
+    }
+
+    const historyRecord = this.requestHistoryRepository.create({
+      eventType: RequestHistoryEventType.DOCUMENT_VIEWED,
+      requestId: input.requestId,
+      userId: input.userId,
+      previousStatusId: null,
+      newStatusId: null,
+      previousAssignedUserId: null,
+      newAssignedUserId: null,
+      observation: null,
+    });
 
     return this.requestHistoryRepository.save(historyRecord);
   }
