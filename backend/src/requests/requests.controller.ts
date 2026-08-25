@@ -235,11 +235,16 @@ export class RequestsController {
         fileSize: 10 * 1024 * 1024,
       },
       fileFilter: (_req: any, file: any, callback: any) => {
-        const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+        const allowedTypes = [
+          'application/pdf',
+          'image/jpeg',
+          'image/png',
+          'image/webp',
+        ];
 
         if (!allowedTypes.includes(file.mimetype)) {
           callback(
-            new BadRequestException('Solo se permiten archivos PDF, JPG o PNG'),
+            new BadRequestException('Solo se permiten archivos PDF, JPG, PNG o WebP'),
             false,
           );
           return;
@@ -271,6 +276,17 @@ export class RequestsController {
       requestId,
       userId: request.user.userId,
     });
+  }
+
+  @Get(':requestId/documents')
+  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.MAYOR, AppRole.ADMIN)
+  @ApiOperation({ summary: 'Consultar todas las versiones de documentos de una solicitud' })
+  @ApiResponse({ status: 200, description: 'Versiones del expediente ordenadas desde la más reciente.' })
+  async getRequestDocuments(
+    @Param('requestId', new ParseUUIDPipe()) requestId: string,
+    @Req() request: { user: { userId: string; role?: string } },
+  ) {
+    return this.requestsService.getRequestDocuments(requestId, request.user);
   }
 
   @Get('/documents/detail/:documentId')
