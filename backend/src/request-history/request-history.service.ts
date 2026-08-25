@@ -36,6 +36,12 @@ export interface RegisterDocumentViewInput {
   userId: string;
 }
 
+export interface RegisterDocumentUploadInput {
+  requestId: string;
+  userId: string;
+  fileName: string;
+}
+
 @Injectable()
 export class RequestHistoryService {
   constructor(
@@ -168,10 +174,33 @@ export class RequestHistoryService {
     return this.requestHistoryRepository.save(historyRecord);
   }
 
+  async registerDocumentUpload(
+    input: RegisterDocumentUploadInput,
+  ): Promise<RequestHistory> {
+    const historyRecord = this.requestHistoryRepository.create({
+      eventType: RequestHistoryEventType.DOCUMENT_UPLOADED,
+      requestId: input.requestId,
+      userId: input.userId,
+      previousStatusId: null,
+      newStatusId: null,
+      previousAssignedUserId: null,
+      newAssignedUserId: null,
+      observation: `Nueva versión del documento: ${input.fileName}`,
+    });
+
+    return this.requestHistoryRepository.save(historyRecord);
+  }
+
   async findByRequestId(requestId: string): Promise<RequestHistory[]> {
     return this.requestHistoryRepository.find({
       where: { requestId },
-      relations: ['user'],
+      relations: [
+        'user',
+        'previousStatus',
+        'newStatus',
+        'previousAssignedUser',
+        'newAssignedUser',
+      ],
       order: { createdAt: 'ASC' },
     });
   }

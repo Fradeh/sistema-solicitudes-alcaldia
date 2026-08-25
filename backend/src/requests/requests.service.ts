@@ -32,6 +32,67 @@ interface AuthenticatedUserContext {
   role?: string;
 }
 
+type WorkflowStatus =
+  | 'assigned_to_department'
+  | 'in_review'
+  | 'approved_by_department'
+  | 'rejected_by_department'
+  | 'awaiting_mayor_signature'
+  | 'returned_to_department'
+  | 'rejected_by_mayor_office'
+  | 'signed'
+  | 'closed';
+
+const WORKFLOW_STATUS_ALIASES: Record<string, WorkflowStatus> = {
+  assigned: 'assigned_to_department',
+  assigned_to_department: 'assigned_to_department',
+  in_progress: 'in_review',
+  in_review: 'in_review',
+  'en proceso': 'in_review',
+  approved_by_officer: 'approved_by_department',
+  department_approved: 'approved_by_department',
+  approved_by_department: 'approved_by_department',
+  rejected: 'rejected_by_department',
+  rejected_by_department: 'rejected_by_department',
+  pending_signature: 'awaiting_mayor_signature',
+  awaiting_mayor_signature: 'awaiting_mayor_signature',
+  returned_to_department: 'returned_to_department',
+  rejected_by_mayor_office: 'rejected_by_mayor_office',
+  signed: 'signed',
+  closed: 'closed',
+  cerrado: 'closed',
+  resuelto: 'closed',
+};
+
+const MAYOR_TRANSITIONS: Partial<Record<WorkflowStatus, WorkflowStatus[]>> = {
+  approved_by_department: [
+    'awaiting_mayor_signature',
+    'rejected_by_mayor_office',
+    'returned_to_department',
+  ],
+  awaiting_mayor_signature: [
+    'signed',
+    'rejected_by_mayor_office',
+    'returned_to_department',
+  ],
+};
+
+const DEPARTMENT_TRANSITIONS: Partial<Record<WorkflowStatus, WorkflowStatus[]>> = {
+  assigned_to_department: ['in_review'],
+  in_review: ['approved_by_department', 'rejected_by_department'],
+  returned_to_department: ['in_review'],
+};
+
+const STATUS_REQUIRING_REASON = new Set<WorkflowStatus>([
+  'rejected_by_department',
+  'rejected_by_mayor_office',
+  'returned_to_department',
+]);
+
+function normalizeWorkflowStatus(name: string): WorkflowStatus | undefined {
+  return WORKFLOW_STATUS_ALIASES[name.trim().toLowerCase()];
+}
+
 @Injectable()
 export class RequestsService {
   constructor(
@@ -59,7 +120,44 @@ export class RequestsService {
     await this.usersService.findOne(createDocumentDto.userId);
 
     const document = this.requestDocumentRepository.create(createDocumentDto);
-    return this.requestDocumentRepository.save(document);
+    const savedDocument = await this.requestDocumentRepository.save(document);
+
+    await this.requestHistoryService.registerDocumentUpload({
+      requestId: createDocumentDto.requestId,
+      userId: createDocumentDto.userId,
+      fileName: createDocumentDto.fileName,
+    });
+
+    return savedDocument;
+  }
+
+  async getRequestDocuments(
+    requestId: string,
+    currentUser: AuthenticatedUserContext,
+  ) {
+    const request = await this.findRequestByIdOrThrow(requestId, [
+      'userAssigned',
+    ]);
+    this.assertOfficerCanAccess(request, currentUser);
+
+    const documents = await this.requestDocumentRepository.find({
+      where: { requestId, isActive: true },
+      relations: ['user'],
+      order: { createdAt: 'DESC' },
+    });
+
+    return documents.map((document, index) => ({
+      id: document.id,
+      fileName: document.fileName,
+      fileType: document.fileType,
+      size: document.size,
+      url: document.url,
+      uploadedById: document.userId,
+      uploadedByName: `${document.user.firstName} ${document.user.lastName}`,
+      createdAt: document.createdAt,
+      version: documents.length - index,
+      isCurrent: index === 0,
+    }));
   }
 
   async findDocumentWithRequestDetails(documentId: string) {
@@ -120,6 +218,7 @@ export class RequestsService {
       .leftJoinAndSelect('request.department', 'department')
       .leftJoinAndSelect('request.status', 'status')
       .leftJoinAndSelect('request.userAssigned', 'userAssigned')
+      .leftJoinAndSelect('request.receivedBy', 'receivedBy')
       .where('request.isActive = :isActive', { isActive: true })
       .orderBy('request.createdAt', 'DESC');
 
@@ -171,7 +270,9 @@ export class RequestsService {
       return {
       id: request.id,
       subject: request.subject,
+      description: request.description,
       applicantName: request.applicantName,
+      applicantContact: request.applicantContact,
       categoryName: request.category.name,
       departmentName: request.department.name,
       statusName: request.status.name,
@@ -182,6 +283,7 @@ export class RequestsService {
       trackingCode: request.trackingCode,
       createdAt: request.createdAt,
       receivedById: request.receivedById,
+      receivedByName: `${request.receivedBy.firstName} ${request.receivedBy.lastName}`,
       requestDate: request.requestDate,
       deadline: request.deadline,
       documentName: document?.fileName ?? null,
@@ -334,8 +436,16 @@ export class RequestsService {
       eventType: entry.eventType,
       previousStatusId: entry.previousStatusId,
       newStatusId: entry.newStatusId,
+      previousStatusName: entry.previousStatus?.name ?? null,
+      newStatusName: entry.newStatus?.name ?? null,
       previousAssignedUserId: entry.previousAssignedUserId,
       newAssignedUserId: entry.newAssignedUserId,
+      previousAssignedUserName: entry.previousAssignedUser
+        ? `${entry.previousAssignedUser.firstName} ${entry.previousAssignedUser.lastName}`
+        : null,
+      newAssignedUserName: entry.newAssignedUser
+        ? `${entry.newAssignedUser.firstName} ${entry.newAssignedUser.lastName}`
+        : null,
       observation: entry.observation,
       userId: entry.userId,
       userName: `${entry.user.firstName} ${entry.user.lastName}`,
@@ -530,6 +640,13 @@ export class RequestsService {
       throw new NotFoundException('Estado no encontrado');
     }
 
+    this.assertValidStatusTransition(
+      request.status.name,
+      status.name,
+      currentUser,
+      dto.observation,
+    );
+
     request.statusId = status.id;
     request.status = status;
 
@@ -567,6 +684,42 @@ export class RequestsService {
       throw error;
     } finally {
       await queryRunner.release();
+    }
+  }
+
+  private assertValidStatusTransition(
+    currentStatusName: string,
+    targetStatusName: string,
+    currentUser: AuthenticatedUserContext,
+    observation?: string,
+  ): void {
+    const currentStatus = normalizeWorkflowStatus(currentStatusName);
+    const targetStatus = normalizeWorkflowStatus(targetStatusName);
+    if (!currentStatus || !targetStatus) {
+      throw new BadRequestException('La transición solicitada no pertenece al flujo oficial');
+    }
+
+    const role = normalizeRoleName(currentUser.role);
+    if (role === AppRole.ADMIN) return;
+
+    const transitions = role === AppRole.MAYOR
+      ? MAYOR_TRANSITIONS
+      : role === AppRole.OFFICER || role === AppRole.SUPERVISOR
+        ? DEPARTMENT_TRANSITIONS
+        : undefined;
+    const isAllowed = transitions?.[currentStatus]?.includes(targetStatus) ?? false;
+
+    if (!isAllowed) {
+      throw new BadRequestException(
+        `No se permite cambiar de ${currentStatus} a ${targetStatus} para este rol`,
+      );
+    }
+
+    if (
+      STATUS_REQUIRING_REASON.has(targetStatus) &&
+      (observation?.trim().length ?? 0) < 10
+    ) {
+      throw new BadRequestException('Debes indicar un motivo de al menos 10 caracteres');
     }
   }
 

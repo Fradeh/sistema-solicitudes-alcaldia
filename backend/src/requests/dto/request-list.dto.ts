@@ -7,6 +7,9 @@ export class RequestListDto {
   @ApiProperty({ example: 'Solicitud de limpieza de parque' })
   subject!: string;
 
+  @ApiProperty({ example: 'Se solicita limpieza y mantenimiento del parque.' })
+  description!: string;
+
   @ApiProperty({ example: 'Servicios Publicos' })
   categoryName!: string;
 
@@ -28,11 +31,17 @@ export class RequestListDto {
   @ApiProperty({ example: 'María García' })
   applicantName!: string;
 
+  @ApiProperty({ example: '8-123-456' })
+  applicantContact!: string;
+
   @ApiProperty({ example: '2023-01-15T10:30:00Z' })
   createdAt!: Date;
 
   @ApiProperty({ format: 'uuid' })
   receivedById!: string;
+
+  @ApiProperty({ example: 'Recepcionista Demo' })
+  receivedByName!: string;
 
   @ApiProperty({ example: '2026-06-28' })
   requestDate!: string;

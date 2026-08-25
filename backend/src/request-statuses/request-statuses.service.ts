@@ -11,6 +11,9 @@ export class RequestStatusesService {
   ) {}
 
   findAll(): Promise<RequestStatus[]> {
-    return this.requestStatusRepository.find();
+    return this.requestStatusRepository.find({
+      where: { isActive: true },
+      order: { createdAt: 'ASC' },
+    });
   }
 }
