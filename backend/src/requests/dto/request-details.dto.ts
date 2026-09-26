@@ -34,6 +34,9 @@ export class RequestDetailsDto {
   @ApiProperty({ example: 'Ana Lopez' })
   receivedByName!: string;
 
+  @ApiProperty({ format: 'uuid' })
+  receivedById!: string;
+
   @ApiProperty({ example: 'ABC-123-XYZ' })
   trackingCode!: string;
 
@@ -42,5 +45,17 @@ export class RequestDetailsDto {
 
   @ApiProperty({ example: '2026-06-01T13:00:00.000Z' })
   updatedAt!: Date;
+
+  @ApiProperty({ example: '2026-06-28' })
+  requestDate!: string;
+
+  @ApiProperty({ example: '2026-07-05', nullable: true })
+  deadline!: string | null;
+
+  @ApiProperty({ example: 'solicitud.pdf', nullable: true })
+  documentName!: string | null;
+
+  @ApiProperty({ example: '/uploads/requests/id/solicitud.pdf', nullable: true })
+  documentUrl!: string | null;
 }
 

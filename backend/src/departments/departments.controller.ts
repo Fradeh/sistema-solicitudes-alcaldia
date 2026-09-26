@@ -9,6 +9,9 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles/roles.guard';
+import { Roles } from '../auth/roles/roles.decorator';
+import { AppRole } from '../auth/roles/app-role.enum';
 import { DepartmentsService } from './departments.service';
 import { CreateDepartmentDto } from './dto/create-department.dto';
 import { UpdateDepartmentDto } from './dto/update-department.dto';
@@ -16,12 +19,13 @@ import { Department } from './entities/department.entity';
 
 @ApiTags('departments')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('departments')
 export class DepartmentsController {
   constructor(private readonly departmentsService: DepartmentsService) {}
 
   @Post()
+  @Roles(AppRole.ADMIN)
   @ApiOperation({ summary: 'Crear un departamento' })
   create(@Body() createDepartmentDto: CreateDepartmentDto): Promise<Department> {
     return this.departmentsService.create(createDepartmentDto);
@@ -40,6 +44,7 @@ export class DepartmentsController {
   }
 
   @Patch(':id')
+  @Roles(AppRole.ADMIN)
   @ApiOperation({ summary: 'Actualizar un departamento' })
   update(
     @Param('id') id: string,

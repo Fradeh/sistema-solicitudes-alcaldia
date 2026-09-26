@@ -1,5 +1,6 @@
 import {
   Body,
+  BadRequestException,
   Controller,
   Delete,
   Get,
@@ -9,22 +10,30 @@ import {
   Post,
   Query,
   Req,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiConsumes,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOperation,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { randomUUID } from 'crypto';
+import { mkdirSync } from 'fs';
+import { extname, join } from 'path';
+import { diskStorage } from 'multer';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AppRole } from '../auth/roles/app-role.enum';
 import { Roles } from '../auth/roles/roles.decorator';
 import { RolesGuard } from '../auth/roles/roles.guard';
-import { DocumentUser } from '../documents/schema/document-user.schema';
+import { RequestDocument } from '../documents/entities/request-document.entity';
 import { RequestHistoryResponseDto } from '../request-history/dto/request-history-response.dto';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { CreateInternalObservationDto } from './dto/create-internal-observation.dto';
@@ -37,6 +46,7 @@ import { RequestsService } from './requests.service';
 import { ListRequestDto } from './dto/RequestListResponse';
 import { AssignRequestDTO } from './dto/AssignRequestDTO';
 import { ChangeStatusDTO } from './dto/ChangeStatusDTO';
+import { ChangeDepartmentDto } from './dto/change-department.dto';
 
 @ApiTags('Requests & Documents')
 @ApiBearerAuth()
@@ -88,7 +98,7 @@ export class RequestsController {
   }
 
   @Get()
-  @Roles(AppRole.SUPERVISOR, AppRole.ADMIN)
+  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.MAYOR, AppRole.ADMIN)
   @ApiOperation({ summary: 'Obtener la lista de todas las solicitudes' })
   @ApiResponse({
     status: 200,
@@ -102,12 +112,13 @@ export class RequestsController {
   @ApiForbiddenResponse({ description: 'No tienes permisos suficientes.' })
   async getAllRequests(
     @Query() filters: FilterRequestDTO,
+    @Req() request: { user: { userId: string; role?: string } },
   ): Promise<RequestListDto[]> {
-    return this.requestsService.getAllRequests(filters);
+    return this.requestsService.getAllRequests(filters, request.user);
   }
 
   @Get('list')
-  @Roles(AppRole.SUPERVISOR, AppRole.ADMIN)
+  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.MAYOR, AppRole.ADMIN)
   @ApiOperation({
     summary: 'Obtener la lista de todas las solicitudes (ruta heredada)',
   })
@@ -123,12 +134,13 @@ export class RequestsController {
   @ApiForbiddenResponse({ description: 'No tienes permisos suficientes.' })
   async getAllRequestsLegacy(
     @Query() filters: FilterRequestDTO,
+    @Req() request: { user: { userId: string; role?: string } },
   ): Promise<RequestListDto[]> {
-    return this.requestsService.getAllRequests(filters);
+    return this.requestsService.getAllRequests(filters, request.user);
   }
 
   @Get(':requestId')
-  @Roles(AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.ADMIN)
+  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.MAYOR, AppRole.ADMIN)
   @ApiOperation({ summary: 'Obtener los detalles de una solicitud por su ID' })
   @ApiResponse({
     status: 200,
@@ -145,7 +157,7 @@ export class RequestsController {
   }
 
   @Patch(':requestId/assign')
-  @Roles(AppRole.SUPERVISOR, AppRole.ADMIN)
+  @Roles(AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.ADMIN)
   @ApiOperation({ summary: 'Asignar una solicitud a un usuario' })
   @ApiResponse({
     status: 200,
@@ -166,7 +178,7 @@ export class RequestsController {
     );
   }
   @Patch(':requestId/status')
-  @Roles(AppRole.SUPERVISOR, AppRole.ADMIN)
+  @Roles(AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.MAYOR, AppRole.ADMIN)
   @ApiOperation({ summary: 'Cambiar el estado de una solicitud' })
   @ApiResponse({
     status: 200,
@@ -183,12 +195,98 @@ export class RequestsController {
     return this.requestsService.changeRequestStatus(requestId, dto, request.user);
   }
 
+  @Patch(':requestId/department')
+  @Roles(AppRole.RECEPTIONIST, AppRole.SUPERVISOR, AppRole.ADMIN)
+  @ApiOperation({ summary: 'Cambiar el departamento de una solicitud' })
+  async changeRequestDepartment(
+    @Param('requestId', new ParseUUIDPipe()) requestId: string,
+    @Body() dto: ChangeDepartmentDto,
+    @Req() request: { user: { userId: string; role?: string } },
+  ): Promise<RequestDetailsDto> {
+    return this.requestsService.changeRequestDepartment(requestId, dto, request.user);
+  }
+
 
   @Post('/documents')
   @ApiOperation({ summary: 'Registrar la metadata de un documento (MongoDB)' })
   @ApiResponse({ status: 201, description: 'Metadata guardada exitosamente.' })
   async registerDocument(@Body() createDocumentDto: CreateDocumentDto) {
     return this.requestsService.createDocument(createDocumentDto);
+  }
+
+  @Post(':requestId/documents/upload')
+  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.MAYOR, AppRole.ADMIN)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: (req: any, _file: any, callback: any) => {
+          const requestId = req.params.requestId;
+          const uploadPath = join(process.cwd(), 'uploads', 'requests', requestId);
+
+          mkdirSync(uploadPath, { recursive: true });
+          callback(null, uploadPath);
+        },
+        filename: (_req: any, file: any, callback: any) => {
+          const safeExtension = extname(file.originalname).toLowerCase();
+          callback(null, `${Date.now()}-${randomUUID()}${safeExtension}`);
+        },
+      }),
+      limits: {
+        fileSize: 10 * 1024 * 1024,
+      },
+      fileFilter: (_req: any, file: any, callback: any) => {
+        const allowedTypes = [
+          'application/pdf',
+          'image/jpeg',
+          'image/png',
+          'image/webp',
+        ];
+
+        if (!allowedTypes.includes(file.mimetype)) {
+          callback(
+            new BadRequestException('Solo se permiten archivos PDF, JPG, PNG o WebP'),
+            false,
+          );
+          return;
+        }
+
+        callback(null, true);
+      },
+    }),
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Subir archivo local asociado a una solicitud' })
+  @ApiResponse({ status: 201, description: 'Archivo guardado exitosamente.' })
+  async uploadRequestDocument(
+    @Param('requestId', new ParseUUIDPipe()) requestId: string,
+    @UploadedFile() file: any,
+    @Req() request: { user: { userId: string } },
+  ) {
+    if (!file) {
+      throw new BadRequestException('Debe adjuntar un archivo');
+    }
+
+    const url = `/uploads/requests/${requestId}/${file.filename}`;
+
+    return this.requestsService.createDocument({
+      fileName: file.originalname,
+      fileType: file.mimetype,
+      size: file.size,
+      url,
+      requestId,
+      userId: request.user.userId,
+    });
+  }
+
+  @Get(':requestId/documents')
+  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.MAYOR, AppRole.ADMIN)
+  @ApiOperation({ summary: 'Consultar todas las versiones de documentos de una solicitud' })
+  @ApiResponse({ status: 200, description: 'Versiones del expediente ordenadas desde la más reciente.' })
+  async getRequestDocuments(
+    @Param('requestId', new ParseUUIDPipe()) requestId: string,
+    @Req() request: { user: { userId: string; role?: string } },
+  ) {
+    return this.requestsService.getRequestDocuments(requestId, request.user);
   }
 
   @Get('/documents/detail/:documentId')
@@ -221,7 +319,7 @@ export class RequestsController {
     status: 200,
     description:
       'El documento ha sido desactivado exitosamente (eliminacion logica).',
-    type: DocumentUser,
+    type: RequestDocument,
   })
   @ApiResponse({ status: 404, description: 'Documento no encontrado.' })
   async removeDocument(@Param('documentId') documentId: string) {
@@ -259,8 +357,22 @@ export class RequestsController {
     );
   }
 
+  @Post(':requestId/document-views')
+  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.MAYOR, AppRole.ADMIN)
+  @ApiOperation({ summary: 'Registrar la primera vista de un documento por usuario' })
+  @ApiResponse({
+    status: 201,
+    description: 'Vista de documento registrada en el historial.',
+  })
+  async registerDocumentView(
+    @Param('requestId', new ParseUUIDPipe()) requestId: string,
+    @Req() request: { user: { userId: string; role?: string } },
+  ) {
+    return this.requestsService.registerDocumentView(requestId, request.user);
+  }
+
   @Get(':requestId/history')
-  @Roles(AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.ADMIN)
+  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.MAYOR, AppRole.ADMIN)
   @ApiOperation({ summary: 'Consultar historial completo de una solicitud' })
   @ApiResponse({
     status: 200,

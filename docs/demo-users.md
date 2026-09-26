@@ -11,6 +11,7 @@ insertar datos manualmente.
 | `recepcionista@demo.local` | `RECEPTIONIST` | `recepcionista` | `password-demo` |
 | `supervisor@demo.local` | `SUPERVISOR` | `supervisor` | `password-demo` |
 | `funcionario@demo.local` | `OFFICER` | `revisor` | `password-demo` |
+| `admin@demo.local` | `ADMIN` | `admin` | `password-demo` |
 
 ## Como obtener el token
 
@@ -44,7 +45,7 @@ insertar datos manualmente.
 
 - El token incluye el rol del usuario en el claim `role`.
 - El seed es idempotente: si se ejecuta mas de una vez no duplica usuarios.
-- Los tres usuarios estan pensados para probar `RECEPTIONIST`, `SUPERVISOR` y
-  `OFFICER` desde frontend.
+- Los cuatro usuarios permiten probar `RECEPTIONIST`, `SUPERVISOR`, `OFFICER`
+  y `ADMIN` desde frontend.
 - El usuario `funcionario@demo.local` se asigna al rol almacenado `revisor`,
   que el backend normaliza como `OFFICER`.
