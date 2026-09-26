@@ -38,28 +38,30 @@ export class AuthService {
   }
 
   async refresh(refreshToken: string) {
+    let payload: JwtPayload;
     try {
-      const payload = this.jwtService.verify(refreshToken, {
+      payload = this.jwtService.verify<JwtPayload>(refreshToken, {
         secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
       });
-
-      const newPayload: JwtPayload = {
-        sub: payload.sub,
-        email: payload.email,
-        role: payload.role,
-      };
-
-      const tokens = await this.generateTokens(newPayload);
-
-      return {
-        access_token: tokens.accessToken,
-        token_type: 'Bearer',
-        expires_in: this.getTokenExpirationSeconds('JWT_EXPIRES_IN'),
-        refresh_token: tokens.refreshToken,
-      };
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
     }
+
+    let user;
+    try {
+      user = await this.usersService.findOne(payload.sub);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw new UnauthorizedException('Authenticated user is no longer active');
+      }
+      throw error;
+    }
+
+    return this.issueTokens({
+      sub: user.id,
+      email: user.email,
+      role: user.role.name,
+    });
   }
 
   async getAuthenticatedUser(userId: string) {
@@ -109,6 +111,16 @@ export class AuthService {
     ]);
 
     return { accessToken, refreshToken };
+  }
+
+  private async issueTokens(payload: JwtPayload) {
+    const tokens = await this.generateTokens(payload);
+    return {
+      access_token: tokens.accessToken,
+      token_type: 'Bearer',
+      expires_in: this.getTokenExpirationSeconds('JWT_EXPIRES_IN'),
+      refresh_token: tokens.refreshToken,
+    };
   }
 
   private getTokenExpirationSeconds(envVar: string): number {

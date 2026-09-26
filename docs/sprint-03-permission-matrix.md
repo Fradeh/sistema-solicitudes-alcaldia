@@ -88,9 +88,9 @@ Subissue 1.4 antes de implementarse.
 | 4 | `requests:assign_department` | SI | No | SI | No |
 | 5 | `requests:set_priority` | SI | No | SI | No |
 | 6 | `requests:set_deadline` | SI | No | SI | No |
-| 7 | `requests:view_all` | Seguimiento | No | SI | No |
+| 7 | `requests:view_all` | Seguimiento | No | SI | Solo lectura |
 | 8 | `requests:view_own_department` | No | SI | No | No |
-| 9 | `requests:view_audit` | Seguimiento | Departamental | SI | No |
+| 9 | `requests:view_audit` | Seguimiento | Departamental | SI | Solo lectura |
 | 10 | `requests:mark_viewed` | No | SI | No | No |
 | 11 | `requests:start_review` | No | SI | No | No |
 | 12 | `requests:approve_department` | No | SI | No | No |
@@ -111,8 +111,8 @@ Subissue 1.4 antes de implementarse.
 
 - **SI** — Permiso asignado al rol.
 - **No** — Permiso bloqueado para el rol.
-- **Seguimiento** — Permiso asignado pero limitado a consulta de seguimiento,
-  sin capacidad operativa. Aplica a SECRETARY.
+- **Seguimiento** — Permiso global limitado a consulta de solicitudes e
+  historial, sin capacidad operativa. Aplica a SECRETARY y ADMIN.
 - **Departamental** — Permiso asignado pero limitado por alcance
   departamental. Aplica a DEPARTMENT_STAFF.
 
@@ -159,18 +159,22 @@ en conjunto con el permiso, no lo reemplaza.
 - La reasignacion de una solicitud cambia inmediatamente el departamento con
   autoridad operativa sobre ella.
 
-### Alcance global (MAYOR_OFFICE, SECRETARY para seguimiento)
+### Alcance global (MAYOR_OFFICE, SECRETARY y ADMIN para seguimiento)
 
 - MAYOR_OFFICE tiene visibilidad global sin restriccion de departamento.
 - SECRETARY tiene visibilidad global limitada a seguimiento: puede consultar
   pero no decidir sobre solicitudes.
+- ADMIN puede consultar el listado, detalle e historial globales. No puede
+  cambiar solicitudes, registrar vistas ni consultar, subir o descargar
+  documentos.
 - La visibilidad global no permite ejecutar transiciones fuera del estado
   compatible.
 
 ### Alcance administrativo (ADMIN)
 
 - Limitado a recursos de configuracion: usuarios, roles y departamentos.
-- No otorga permisos operativos sobre solicitudes.
+- La consulta de seguimiento indicada arriba no otorga permisos operativos
+  sobre solicitudes.
 
 ### Alcance propio
 

@@ -21,7 +21,7 @@ export interface RegisterAssignmentInput {
   requestId: string;
   userId: string;
   previousAssignedUserId: string | null;
-  newAssignedUserId: string;
+  newAssignedUserId: string | null;
   observation?: string | null;
 }
 
@@ -29,6 +29,17 @@ export interface RegisterInternalObservationInput {
   requestId: string;
   userId: string;
   observation: string;
+}
+
+export interface RegisterDocumentViewInput {
+  requestId: string;
+  userId: string;
+}
+
+export interface RegisterDocumentUploadInput {
+  requestId: string;
+  userId: string;
+  fileName: string;
 }
 
 @Injectable()
@@ -134,9 +145,67 @@ export class RequestHistoryService {
     return this.requestHistoryRepository.save(historyRecord);
   }
 
+  async registerDocumentView(
+    input: RegisterDocumentViewInput,
+  ): Promise<RequestHistory> {
+    const existing = await this.requestHistoryRepository.findOne({
+      where: {
+        requestId: input.requestId,
+        userId: input.userId,
+        eventType: RequestHistoryEventType.DOCUMENT_VIEWED,
+      },
+    });
+
+    if (existing) {
+      return existing;
+    }
+
+    const historyRecord = this.requestHistoryRepository.create({
+      eventType: RequestHistoryEventType.DOCUMENT_VIEWED,
+      requestId: input.requestId,
+      userId: input.userId,
+      previousStatusId: null,
+      newStatusId: null,
+      previousAssignedUserId: null,
+      newAssignedUserId: null,
+      observation: null,
+    });
+
+    return this.requestHistoryRepository.save(historyRecord);
+  }
+
+  async registerDocumentUpload(
+    input: RegisterDocumentUploadInput,
+    entityManager?: EntityManager,
+  ): Promise<RequestHistory> {
+    const historyRecord = this.requestHistoryRepository.create({
+      eventType: RequestHistoryEventType.DOCUMENT_UPLOADED,
+      requestId: input.requestId,
+      userId: input.userId,
+      previousStatusId: null,
+      newStatusId: null,
+      previousAssignedUserId: null,
+      newAssignedUserId: null,
+      observation: `Nueva versión del documento: ${input.fileName}`,
+    });
+
+    if (entityManager) {
+      return entityManager.save(historyRecord);
+    }
+
+    return this.requestHistoryRepository.save(historyRecord);
+  }
+
   async findByRequestId(requestId: string): Promise<RequestHistory[]> {
     return this.requestHistoryRepository.find({
       where: { requestId },
+      relations: [
+        'user',
+        'previousStatus',
+        'newStatus',
+        'previousAssignedUser',
+        'newAssignedUser',
+      ],
       order: { createdAt: 'ASC' },
     });
   }
