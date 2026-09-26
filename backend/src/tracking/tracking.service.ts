@@ -14,7 +14,7 @@ export interface PublicTrackingResponse {
 
 @Injectable()
 export class TrackingService {
-  private static readonly TRACKING_CODE_REGEX = /^[A-Z]{3}-[A-Z0-9]+-[A-Z0-9]+$/;
+  private static readonly TRACKING_CODE_REGEX = /^[A-Z0-9]{2,8}(?:-[A-Z0-9]+)+$/;
 
   constructor(
     @InjectRepository(Request)

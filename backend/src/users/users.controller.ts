@@ -90,7 +90,10 @@ export class UsersController {
   @ApiOperation({ summary: 'Eliminar un usuario (soft delete)' })
   @ApiResponse({ status: 200, description: 'Usuario eliminado' })
   @ApiResponse({ status: 404, description: 'Usuario no encontrado' })
-  remove(@Param('id') id: string) {
-    return this.usersService.remove(id);
+  remove(
+    @Param('id') id: string,
+    @Req() request: { user: { userId: string; role?: string } },
+  ) {
+    return this.usersService.remove(id, request.user);
   }
 }

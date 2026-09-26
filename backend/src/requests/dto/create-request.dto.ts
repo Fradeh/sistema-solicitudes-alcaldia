@@ -1,4 +1,4 @@
-import { IsUUID, IsNotEmpty, IsString, IsEnum, IsOptional, IsDateString } from 'class-validator'
+import { IsUUID, IsNotEmpty, IsString, IsEnum, IsOptional, IsDateString, Matches } from 'class-validator'
 import { RequestPriority } from 'src/requests/enums/request-priority.enum'
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -40,12 +40,6 @@ export class CreateRequestDto {
     @IsNotEmpty()
     departmentId!: string;
 
-    // UUID del estado al que pertenece la solicitud
-    @ApiProperty({ required: false })
-    @IsUUID()
-    @IsOptional()
-    statusId?: string;
-
     // Prioridad de la solicitud
     @ApiProperty()
     @IsEnum(RequestPriority,{
@@ -56,18 +50,13 @@ export class CreateRequestDto {
 
     @ApiProperty({ example: '2026-06-28' })
     @IsDateString()
+    @Matches(/^\d{4}-\d{2}-\d{2}$/)
     @IsOptional()
     requestDate?: string;
 
     @ApiProperty({ example: '2026-07-05', required: false, nullable: true })
     @IsDateString()
+    @Matches(/^\d{4}-\d{2}-\d{2}$/)
     @IsOptional()
     deadline?: string;
-
-    // UUID del usuario asignado a la solicitud
-    @ApiProperty({ required: false })
-    @IsUUID()
-    @IsOptional()
-    userAssignedId?: string;
-
 }

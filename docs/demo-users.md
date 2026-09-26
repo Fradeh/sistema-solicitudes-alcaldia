@@ -9,8 +9,8 @@ insertar datos manualmente.
 | Email | Rol funcional | Rol almacenado | Password |
 | --- | --- | --- | --- |
 | `recepcionista@demo.local` | `RECEPTIONIST` | `recepcionista` | `password-demo` |
-| `supervisor@demo.local` | `SUPERVISOR` | `supervisor` | `password-demo` |
 | `funcionario@demo.local` | `OFFICER` | `revisor` | `password-demo` |
+| `alcalde@demo.local` | `MAYOR` | `MAYOR` | `password-demo` |
 | `admin@demo.local` | `ADMIN` | `admin` | `password-demo` |
 
 ## Como obtener el token
@@ -45,7 +45,10 @@ insertar datos manualmente.
 
 - El token incluye el rol del usuario en el claim `role`.
 - El seed es idempotente: si se ejecuta mas de una vez no duplica usuarios.
-- Los cuatro usuarios permiten probar `RECEPTIONIST`, `SUPERVISOR`, `OFFICER`
-  y `ADMIN` desde frontend.
+- Estos cuatro usuarios activos permiten probar `RECEPTIONIST`, `OFFICER`,
+  `MAYOR` y `ADMIN` desde frontend.
 - El usuario `funcionario@demo.local` se asigna al rol almacenado `revisor`,
   que el backend normaliza como `OFFICER`.
+- `supervisor@demo.local` es una cuenta heredada que las migraciones actuales
+  desactivan al retirar progresivamente el rol `SUPERVISOR`; no sirve para
+  iniciar sesion en una base de datos migrada.

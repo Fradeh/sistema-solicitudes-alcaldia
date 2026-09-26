@@ -21,7 +21,7 @@ export interface RegisterAssignmentInput {
   requestId: string;
   userId: string;
   previousAssignedUserId: string | null;
-  newAssignedUserId: string;
+  newAssignedUserId: string | null;
   observation?: string | null;
 }
 
@@ -176,6 +176,7 @@ export class RequestHistoryService {
 
   async registerDocumentUpload(
     input: RegisterDocumentUploadInput,
+    entityManager?: EntityManager,
   ): Promise<RequestHistory> {
     const historyRecord = this.requestHistoryRepository.create({
       eventType: RequestHistoryEventType.DOCUMENT_UPLOADED,
@@ -187,6 +188,10 @@ export class RequestHistoryService {
       newAssignedUserId: null,
       observation: `Nueva versión del documento: ${input.fileName}`,
     });
+
+    if (entityManager) {
+      return entityManager.save(historyRecord);
+    }
 
     return this.requestHistoryRepository.save(historyRecord);
   }

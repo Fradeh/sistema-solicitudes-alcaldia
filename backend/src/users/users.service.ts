@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -13,7 +14,6 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { normalizeRoleName } from '../auth/roles/role-normalizer';
 import { AppRole } from '../auth/roles/app-role.enum';
-import { ForbiddenException } from '@nestjs/common';
 import { Role } from '../roles/entities/role.entity';
 import { Department } from '../departments/entities/department.entity';
 
@@ -90,39 +90,66 @@ export class UsersService {
   async update(
     id: string,
     dto: UpdateUserDto,
-    currentUser?: { userId: string; role?: string },
+    currentUser: { userId: string; role?: string },
   ): Promise<UserResponseDto> {
-    if (
-      currentUser &&
-      currentUser.userId !== id &&
-      normalizeRoleName(currentUser.role) !== AppRole.ADMIN
-    ) {
+    const isAdmin = normalizeRoleName(currentUser.role) === AppRole.ADMIN;
+    const isSelf = currentUser.userId === id;
+
+    if (!isAdmin && !isSelf) {
       throw new ForbiddenException('No puedes modificar otro usuario');
     }
+
+    if (!isAdmin && (
+      dto.roleId !== undefined ||
+      dto.departmentId !== undefined ||
+      dto.isActive !== undefined
+    )) {
+      throw new ForbiddenException(
+        'Solo un administrador puede cambiar el rol, departamento o estado de una cuenta',
+      );
+    }
+
+    if (isAdmin && isSelf && dto.isActive === false) {
+      throw new ForbiddenException('No puedes desactivar tu propia cuenta');
+    }
+
     const user = await this.userRepository.findOne({
       where: { id },
       relations: ['role', 'department'],
     });
     if (!user) throw new NotFoundException('User not found');
 
-    if (dto.roleId || dto.departmentId !== undefined) {
+    const updates = { ...dto };
+
+    if (updates.roleId || updates.departmentId !== undefined) {
       const requestedDepartmentId =
-        dto.departmentId !== undefined
-          ? dto.departmentId
-          : dto.roleId
-            ? undefined
-            : (user.departmentId ?? undefined);
+        updates.departmentId !== undefined
+          ? updates.departmentId
+          : (user.departmentId ?? undefined);
       user.departmentId =
         (await this.resolveDepartmentId(
-          dto.roleId ?? user.roleId,
+          updates.roleId ?? user.roleId,
           requestedDepartmentId,
         )) ?? null;
-      delete dto.departmentId;
+      if (updates.roleId) {
+        const role = await this.roleRepository.findOne({
+          where: { id: updates.roleId, isActive: true },
+        });
+        if (!role) throw new BadRequestException('El rol seleccionado no existe o está inactivo');
+        user.role = role;
+        user.roleId = role.id;
+      }
+      user.department = user.departmentId
+        ? await this.departmentRepository.findOne({
+            where: { id: user.departmentId, isActive: true },
+          })
+        : null;
+      delete updates.departmentId;
     }
 
-    if (dto.email && dto.email !== user.email) {
+    if (updates.email && updates.email !== user.email) {
       const existing = await this.userRepository.findOne({
-        where: { email: dto.email },
+        where: { email: updates.email },
       });
 
       if (existing) {
@@ -130,11 +157,11 @@ export class UsersService {
       }
     }
 
-    if (dto.password) {
-      dto.password = await bcrypt.hash(dto.password, 10);
+    if (updates.password) {
+      updates.password = await bcrypt.hash(updates.password, 10);
     }
 
-    Object.assign(user, dto);
+    Object.assign(user, updates);
 
     await this.userRepository.save(user);
     const updated = await this.userRepository.findOne({
@@ -145,7 +172,17 @@ export class UsersService {
     return this.toResponseDto(updated);
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(
+    id: string,
+    currentUser: { userId: string; role?: string },
+  ): Promise<void> {
+    if (
+      currentUser.userId === id &&
+      normalizeRoleName(currentUser.role) === AppRole.ADMIN
+    ) {
+      throw new ForbiddenException('No puedes desactivar tu propia cuenta');
+    }
+
     await this.findActiveUser(id);
 
     await this.userRepository.update(id, { isActive: false });
@@ -164,7 +201,12 @@ export class UsersService {
       return null;
     }
 
-    return user;
+    try {
+      return await this.findActiveUser(user.id);
+    } catch (error) {
+      if (error instanceof NotFoundException) return null;
+      throw error;
+    }
   }
 
   private async findActiveUser(id: string): Promise<User> {
@@ -175,6 +217,18 @@ export class UsersService {
 
     if (!user) {
       throw new NotFoundException('User not found');
+    }
+
+    if (!user.role?.isActive) {
+      throw new NotFoundException('User role is no longer active');
+    }
+
+    const role = normalizeRoleName(user.role.name);
+    if (
+      (role === AppRole.OFFICER || role === AppRole.SUPERVISOR) &&
+      (!user.departmentId || !user.department?.isActive)
+    ) {
+      throw new NotFoundException('User department is no longer active');
     }
 
     return user;
