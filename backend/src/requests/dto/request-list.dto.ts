@@ -52,7 +52,7 @@ export class RequestListDto {
   @ApiProperty({ example: 'solicitud.pdf', nullable: true })
   documentName!: string | null;
 
-  @ApiProperty({ example: '/uploads/requests/id/solicitud.pdf', nullable: true })
+  @ApiProperty({ example: '/api/v1/requests/id/documents/document-id/content', nullable: true })
   documentUrl!: string | null;
 }
 

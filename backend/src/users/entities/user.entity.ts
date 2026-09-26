@@ -44,7 +44,7 @@ export class User {
 
   @ManyToOne(() => Department, { nullable: true })
   @JoinColumn({ name: 'department_id' })
-  department?: Department;
+  department!: Department | null;
 
   @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
   createdAt!: Date;

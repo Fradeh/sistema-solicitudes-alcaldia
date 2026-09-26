@@ -4,17 +4,21 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
+  NotFoundException,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
   Query,
   Req,
+  StreamableFile,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { createReadStream, promises as fs } from 'fs';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -33,9 +37,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AppRole } from '../auth/roles/app-role.enum';
 import { Roles } from '../auth/roles/roles.decorator';
 import { RolesGuard } from '../auth/roles/roles.guard';
-import { RequestDocument } from '../documents/entities/request-document.entity';
 import { RequestHistoryResponseDto } from '../request-history/dto/request-history-response.dto';
-import { CreateDocumentDto } from './dto/create-document.dto';
 import { CreateInternalObservationDto } from './dto/create-internal-observation.dto';
 import { CreateRequestDto } from './dto/create-request.dto';
 import { AssignRequestDto } from './dto/assign-request.dto';
@@ -43,10 +45,9 @@ import { FilterRequestDTO } from './dto/FilterRequestDTO';
 import { RequestDetailsDto } from './dto/request-details.dto';
 import { RequestListDto } from './dto/request-list.dto';
 import { RequestsService } from './requests.service';
-import { ListRequestDto } from './dto/RequestListResponse';
-import { AssignRequestDTO } from './dto/AssignRequestDTO';
 import { ChangeStatusDTO } from './dto/ChangeStatusDTO';
 import { ChangeDepartmentDto } from './dto/change-department.dto';
+import { RequestDocumentUploadGuard } from './guards/request-document-upload.guard';
 
 @ApiTags('Requests & Documents')
 @ApiBearerAuth()
@@ -157,7 +158,7 @@ export class RequestsController {
   }
 
   @Patch(':requestId/assign')
-  @Roles(AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.ADMIN)
+  @Roles(AppRole.OFFICER, AppRole.SUPERVISOR)
   @ApiOperation({ summary: 'Asignar una solicitud a un usuario' })
   @ApiResponse({
     status: 200,
@@ -178,7 +179,7 @@ export class RequestsController {
     );
   }
   @Patch(':requestId/status')
-  @Roles(AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.MAYOR, AppRole.ADMIN)
+  @Roles(AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.MAYOR)
   @ApiOperation({ summary: 'Cambiar el estado de una solicitud' })
   @ApiResponse({
     status: 200,
@@ -196,7 +197,7 @@ export class RequestsController {
   }
 
   @Patch(':requestId/department')
-  @Roles(AppRole.RECEPTIONIST, AppRole.SUPERVISOR, AppRole.ADMIN)
+  @Roles(AppRole.RECEPTIONIST, AppRole.SUPERVISOR, AppRole.MAYOR)
   @ApiOperation({ summary: 'Cambiar el departamento de una solicitud' })
   async changeRequestDepartment(
     @Param('requestId', new ParseUUIDPipe()) requestId: string,
@@ -205,17 +206,9 @@ export class RequestsController {
   ): Promise<RequestDetailsDto> {
     return this.requestsService.changeRequestDepartment(requestId, dto, request.user);
   }
-
-
-  @Post('/documents')
-  @ApiOperation({ summary: 'Registrar la metadata de un documento (MongoDB)' })
-  @ApiResponse({ status: 201, description: 'Metadata guardada exitosamente.' })
-  async registerDocument(@Body() createDocumentDto: CreateDocumentDto) {
-    return this.requestsService.createDocument(createDocumentDto);
-  }
-
   @Post(':requestId/documents/upload')
-  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.MAYOR, AppRole.ADMIN)
+  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR)
+  @UseGuards(RequestDocumentUploadGuard)
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
@@ -235,14 +228,14 @@ export class RequestsController {
         fileSize: 10 * 1024 * 1024,
       },
       fileFilter: (_req: any, file: any, callback: any) => {
-        const allowedTypes = [
-          'application/pdf',
-          'image/jpeg',
-          'image/png',
-          'image/webp',
-        ];
+        const allowedTypes = new Map<string, string[]>([
+          ['application/pdf', ['.pdf']],
+          ['image/jpeg', ['.jpg', '.jpeg']],
+          ['image/png', ['.png']],
+          ['image/webp', ['.webp']],
+        ]);
 
-        if (!allowedTypes.includes(file.mimetype)) {
+        if (!allowedTypes.get(file.mimetype)?.includes(extname(file.originalname).toLowerCase())) {
           callback(
             new BadRequestException('Solo se permiten archivos PDF, JPG, PNG o WebP'),
             false,
@@ -259,37 +252,67 @@ export class RequestsController {
   @ApiResponse({ status: 201, description: 'Archivo guardado exitosamente.' })
   async uploadRequestDocument(
     @Param('requestId', new ParseUUIDPipe()) requestId: string,
-    @UploadedFile() file: any,
-    @Req() request: { user: { userId: string } },
+    @UploadedFile() file: {
+      filename: string;
+      path: string;
+      originalname: string;
+      mimetype: string;
+      size: number;
+    },
+    @Req() request: { user: { userId: string; role?: string; departmentId?: string | null } },
   ) {
     if (!file) {
       throw new BadRequestException('Debe adjuntar un archivo');
     }
 
-    const url = `/uploads/requests/${requestId}/${file.filename}`;
-
-    return this.requestsService.createDocument({
+    return this.requestsService.registerUploadedDocument({
       fileName: file.originalname,
       fileType: file.mimetype,
       size: file.size,
-      url,
+      path: file.path,
       requestId,
-      userId: request.user.userId,
+      currentUser: request.user,
+    }).catch(async (error: unknown) => {
+      await fs.unlink(file.path).catch(() => undefined);
+      throw error;
     });
   }
 
   @Get(':requestId/documents')
-  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.MAYOR, AppRole.ADMIN)
+  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.MAYOR)
   @ApiOperation({ summary: 'Consultar todas las versiones de documentos de una solicitud' })
   @ApiResponse({ status: 200, description: 'Versiones del expediente ordenadas desde la más reciente.' })
   async getRequestDocuments(
     @Param('requestId', new ParseUUIDPipe()) requestId: string,
-    @Req() request: { user: { userId: string; role?: string } },
+    @Req() request: { user: { userId: string; role?: string; departmentId?: string | null } },
   ) {
     return this.requestsService.getRequestDocuments(requestId, request.user);
   }
 
+  @Get(':requestId/documents/:documentId/content')
+  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.MAYOR)
+  @Header('Cache-Control', 'private, no-store')
+  @Header('X-Content-Type-Options', 'nosniff')
+  @ApiOperation({ summary: 'Obtener el contenido de una versión de documento autorizada' })
+  async getDocumentContent(
+    @Param('requestId', new ParseUUIDPipe()) requestId: string,
+    @Param('documentId', new ParseUUIDPipe()) documentId: string,
+    @Req() request: { user: { userId: string; role?: string; departmentId?: string | null } },
+  ): Promise<StreamableFile> {
+    const document = await this.requestsService.getDocumentContent(
+      requestId,
+      documentId,
+      request.user,
+    );
+    return new StreamableFile(createReadStream(document.path), {
+      type: document.fileType,
+      disposition: `inline; filename*=UTF-8''${encodeURIComponent(document.fileName)}`,
+      length: document.size,
+    });
+  }
+
   @Get('/documents/detail/:documentId')
+  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.MAYOR)
   @ApiOperation({
     summary: 'Obtener la metadata de un documento especifico junto a su solicitud',
   })
@@ -299,19 +322,15 @@ export class RequestsController {
       'Metadata del documento y datos de la solicitud obtenidos con exito.',
   })
   @ApiResponse({ status: 404, description: 'Documento no encontrado.' })
-  async getDocumentDetail(@Param('documentId') documentId: string) {
-    const result = await this.requestsService.findDocumentWithRequestDetails(
-      documentId,
-    );
-
-    if (!result) {
-      return { statusCode: 404, message: 'El documento solicitado no existe.' };
-    }
-
-    return result;
+  async getDocumentDetail(
+    @Param('documentId', new ParseUUIDPipe()) documentId: string,
+    @Req() request: { user: { userId: string; role?: string; departmentId?: string | null } },
+  ) {
+    return this.requestsService.findDocumentWithRequestDetails(documentId, request.user);
   }
 
   @Delete('documents/:documentId')
+  @Roles(AppRole.RECEPTIONIST, AppRole.SUPERVISOR)
   @ApiOperation({
     summary: 'Desactivar/Eliminar logicamente un documento del expediente',
   })
@@ -319,18 +338,17 @@ export class RequestsController {
     status: 200,
     description:
       'El documento ha sido desactivado exitosamente (eliminacion logica).',
-    type: RequestDocument,
   })
   @ApiResponse({ status: 404, description: 'Documento no encontrado.' })
-  async removeDocument(@Param('documentId') documentId: string) {
+  async removeDocument(
+    @Param('documentId', new ParseUUIDPipe()) documentId: string,
+    @Req() request: { user: { userId: string; role?: string; departmentId?: string | null } },
+  ) {
     const deletedDocument =
-      await this.requestsService.removeDocumentLogically(documentId);
+      await this.requestsService.removeDocumentLogically(documentId, request.user);
 
     if (!deletedDocument) {
-      return {
-        statusCode: 404,
-        message: 'El documento que intenta eliminar no existe.',
-      };
+      throw new NotFoundException('El documento no existe');
     }
 
     return deletedDocument;
@@ -358,7 +376,7 @@ export class RequestsController {
   }
 
   @Post(':requestId/document-views')
-  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.MAYOR, AppRole.ADMIN)
+  @Roles(AppRole.RECEPTIONIST, AppRole.OFFICER, AppRole.SUPERVISOR, AppRole.MAYOR)
   @ApiOperation({ summary: 'Registrar la primera vista de un documento por usuario' })
   @ApiResponse({
     status: 201,
@@ -366,7 +384,7 @@ export class RequestsController {
   })
   async registerDocumentView(
     @Param('requestId', new ParseUUIDPipe()) requestId: string,
-    @Req() request: { user: { userId: string; role?: string } },
+    @Req() request: { user: { userId: string; role?: string; departmentId?: string | null } },
   ) {
     return this.requestsService.registerDocumentView(requestId, request.user);
   }
@@ -383,7 +401,7 @@ export class RequestsController {
   @ApiForbiddenResponse({ description: 'No tienes permisos suficientes.' })
   async getRequestHistory(
     @Param('requestId', new ParseUUIDPipe()) requestId: string,
-    @Req() request: { user: { userId: string; role?: string } },
+    @Req() request: { user: { userId: string; role?: string; departmentId?: string | null } },
   ): Promise<RequestHistoryResponseDto[]> {
     return this.requestsService.getRequestHistory(requestId, request.user);
   }
