@@ -1,26 +1,33 @@
 services:
   backend:
-    image: node:20
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: solicitudes_backend
-    working_dir: /app
-    command: npm run start:dev
+    command: sh -c "npm run migration:run && npm run start:dev"
     ports:
       - "3000:3000"
+    env_file:
+      - ./backend/.env
     environment:
       PORT: 3000
-      API_PREFIX: api
+      API_PREFIX: api/v1
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_DB: solicitudes_db
       POSTGRES_USER: solicitudes_user
       POSTGRES_PASSWORD: solicitudes_password
-      MONGODB_URI: mongodb://solicitudes_user:solicitudes_password@mongodb:27017/solicitudes_db?authSource=admin
+      MONGODB_URI: mongodb://solicitudes_user:solicitudes_password@mongodb:27017/solicitudes_academic?authSource=admin
+      JWT_EXPIRES_IN: 8h
+      JWT_REFRESH_EXPIRES_IN: 7d
     volumes:
       - ./backend:/app
       - backend_node_modules:/app/node_modules
     depends_on:
-      - postgres
-      - mongodb
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_started
 
   postgres:
     image: postgres:16
@@ -30,9 +37,14 @@ services:
       POSTGRES_USER: solicitudes_user
       POSTGRES_PASSWORD: solicitudes_password
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U solicitudes_user -d solicitudes_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   mongodb:
     image: mongo:7

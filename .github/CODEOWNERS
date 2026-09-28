@@ -1,0 +1,18 @@
+# Arquitectura y contrato API
+/docs/architecture.md                       @Fradeh
+/docs/api-contract-sprint-01.md             @Fradeh
+/docs/api-changelog.md                      @Fradeh
+
+# Flujo principal de solicitudes
+/backend/src/requests/                      @Fradeh
+/backend/src/tracking/                      @Fradeh
+/backend/src/request-history/               @Fradeh
+
+# Persistencia y seguridad
+/backend/src/database/migrations/           @Fradeh
+/backend/src/auth/                          @Fradeh
+/backend/src/users/                         @Fradeh
+
+# MongoDB requiere revision antes de ampliar su uso
+/backend/src/documents/                     @Fradeh
+/backend/src/academic-mongo/                @Fradeh

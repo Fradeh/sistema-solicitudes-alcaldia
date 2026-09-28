@@ -1,0 +1,143 @@
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
+import type { StringValue } from 'ms';
+import { JwtPayload } from './interfaces/jwt-payload.interface';
+import { LoginDto } from './dto/login.dto';
+import { UsersService } from '../users/users.service';
+
+@Injectable()
+export class AuthService {
+  constructor(
+    private jwtService: JwtService,
+    private configService: ConfigService,
+    private usersService: UsersService,
+  ) {}
+
+  async login(dto: LoginDto) {
+    const user = await this.usersService.validateUser(dto.email, dto.password);
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const payload: JwtPayload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role.name,
+    };
+
+    const tokens = await this.generateTokens(payload);
+
+    return {
+      access_token: tokens.accessToken,
+      token_type: 'Bearer',
+      expires_in: this.getTokenExpirationSeconds('JWT_EXPIRES_IN'),
+      refresh_token: tokens.refreshToken,
+    };
+  }
+
+  async refresh(refreshToken: string) {
+    let payload: JwtPayload;
+    try {
+      payload = this.jwtService.verify<JwtPayload>(refreshToken, {
+        secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    let user;
+    try {
+      user = await this.usersService.findOne(payload.sub);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw new UnauthorizedException('Authenticated user is no longer active');
+      }
+      throw error;
+    }
+
+    return this.issueTokens({
+      sub: user.id,
+      email: user.email,
+      role: user.role.name,
+    });
+  }
+
+  async getAuthenticatedUser(userId: string) {
+    try {
+      const user = await this.usersService.findOne(userId);
+
+      return {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        isActive: user.isActive,
+        roleId: user.roleId,
+        role: {
+          id: user.role.id,
+          name: user.role.name,
+        },
+        departmentId: user.departmentId,
+        department: user.department
+          ? {
+              id: user.department.id,
+              name: user.department.name,
+            }
+          : undefined,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw new UnauthorizedException('Authenticated user is no longer active');
+      }
+
+      throw error;
+    }
+  }
+
+  private async generateTokens(payload: JwtPayload) {
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtService.signAsync(payload),
+      this.jwtService.signAsync(payload, {
+        secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+        expiresIn: this.configService.get<string>(
+          'JWT_REFRESH_EXPIRES_IN',
+          '7d',
+        ) as StringValue,
+      }),
+    ]);
+
+    return { accessToken, refreshToken };
+  }
+
+  private async issueTokens(payload: JwtPayload) {
+    const tokens = await this.generateTokens(payload);
+    return {
+      access_token: tokens.accessToken,
+      token_type: 'Bearer',
+      expires_in: this.getTokenExpirationSeconds('JWT_EXPIRES_IN'),
+      refresh_token: tokens.refreshToken,
+    };
+  }
+
+  private getTokenExpirationSeconds(envVar: string): number {
+    const value = this.configService.get<string>(envVar, '8h');
+    const match = value.match(/^(\d+)([smhd])$/);
+    if (!match) return 28800;
+
+    const num = parseInt(match[1], 10);
+    const unit = match[2];
+
+    const multipliers: Record<string, number> = {
+      s: 1,
+      m: 60,
+      h: 3600,
+      d: 86400,
+    };
+
+    return num * (multipliers[unit] ?? 3600);
+  }
+}
